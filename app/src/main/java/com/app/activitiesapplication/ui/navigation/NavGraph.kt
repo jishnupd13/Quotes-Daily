@@ -1,5 +1,6 @@
 package com.app.activitiesapplication.ui.navigation
 
+import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -31,7 +32,9 @@ fun AppNavGraph(navController: NavHostController = rememberNavController(), modi
         }
 
         composable(Destinations.SPLASH){
-             SplashScreen()
+             SplashScreen{
+                 Log.e("AppNavGraph", "Navigating to Quotes Screen")
+             }
         }
     }
 }
