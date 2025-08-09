@@ -19,10 +19,17 @@ import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.plugins.logging.Logger
 import android.util.Log
+import com.app.activitiesapplication.data.remote.quotes.QuotesApiService
+import com.app.activitiesapplication.data.remote.quotes.QuotesApiServiceImpl
+import com.app.activitiesapplication.data.repository.quotes.QuotesRepositoryImpl
+import com.app.activitiesapplication.domain.repository.quotes.QuotesRepository
+import com.app.activitiesapplication.domain.usecase.quotes.GetQuotesUseCase
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.DefaultRequest
+import com.app.activitiesapplication.utils.BASE_URL
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -33,6 +40,9 @@ object AppModule {
     fun provideHttpClient(): HttpClient = HttpClient(CIO) {
         install(ContentNegotiation) {
             json(Json { ignoreUnknownKeys = true })
+        }
+        install(DefaultRequest) {
+            url(BASE_URL)
         }
         install(Logging) {
             logger = object : Logger {
@@ -64,4 +74,18 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDataStoreManager(@ApplicationContext context: Context): DataStoreManager = DataStoreManager(context)
+
+    @Provides
+    @Singleton
+    fun provideQuotesApiService(client: HttpClient): QuotesApiService = QuotesApiServiceImpl(client)
+
+    @Provides
+    @Singleton
+    fun provideQuotesRepository(api: QuotesApiService): QuotesRepository = QuotesRepositoryImpl(api)
+
+    @Provides
+    @Singleton
+    fun provideGetQuotesUseCase(repository: QuotesRepository): GetQuotesUseCase = GetQuotesUseCase(repository)
+
+
 }

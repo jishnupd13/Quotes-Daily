@@ -8,8 +8,10 @@ interface PostApiService {
     suspend fun getPosts(): List<PostDto>
 }
 
+
+
 class PostApiServiceImpl(private val client: HttpClient) : PostApiService {
     override suspend fun getPosts(): List<PostDto> {
-        return client.get("https://jsonplaceholder.typicode.com/posts").body()
+        return client.get("/posts").body()
     }
 }

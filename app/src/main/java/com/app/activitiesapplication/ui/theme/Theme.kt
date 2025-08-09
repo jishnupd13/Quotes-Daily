@@ -19,15 +19,15 @@ private val DarkColorScheme = darkColorScheme(
 private val LightColorScheme = lightColorScheme(
     primary = primaryColor,
     secondary = whiteColor,
-    tertiary = whiteColor
-
+    tertiary = whiteColor,
 )
 
 @Composable
 fun ActivitiesApplicationTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+ //   darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false, // Set to false for light theme by default
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
