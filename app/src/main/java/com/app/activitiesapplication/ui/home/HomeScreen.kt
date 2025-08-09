@@ -1,6 +1,5 @@
 package com.app.activitiesapplication.ui.home
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Badge
@@ -14,13 +13,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.app.activitiesapplication.domain.model.bottom_navigation.BottomNavigationItem
 import com.app.activitiesapplication.domain.model.bottom_navigation.bottomNavigationItems
@@ -48,33 +45,41 @@ fun HomeScreen(){
 }
 
 @Composable
-fun BottomNavigationView(list: List<BottomNavigationItem>,navController: NavController){
+fun BottomNavigationView(list: List<BottomNavigationItem>, navController: NavController) {
 
-  var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = currentBackStackEntry?.destination?.route
 
-  NavigationBar {
-    list.forEachIndexed { index, item ->
-      NavigationBarItem(
-        selected = selectedTabIndex == index,
-        onClick = {
-          selectedTabIndex = index
-          navController.navigate(item.navPath)
-        },
-        icon = {
-          TabBarIconView(
-            isSelected = selectedTabIndex == index,
-            selectedIcon = item.selectedIcon,
-            unselectedIcon = item.unselectedIcon,
-            title = item.title,
-            badgeAmount = item.badgeCount,
-          )
-        },
-        label = {
-          Text(item.title)
+    NavigationBar {
+        list.forEach { item ->
+            val selected = currentRoute == item.navPath
+            NavigationBarItem(
+                selected = selected,
+                onClick = {
+                    if (!selected) {
+                        navController.navigate(item.navPath) {
+                            // Avoid building up a large stack of the same destinations
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                },
+                icon = {
+                    TabBarIconView(
+                        isSelected = selected,
+                        selectedIcon = item.selectedIcon,
+                        unselectedIcon = item.unselectedIcon,
+                        title = item.title,
+                        badgeAmount = item.badgeCount,
+                    )
+                },
+                label = { Text(item.title) }
+            )
         }
-      )
     }
-  }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
