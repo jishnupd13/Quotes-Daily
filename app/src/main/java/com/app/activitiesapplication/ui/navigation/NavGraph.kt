@@ -1,12 +1,12 @@
 package com.app.activitiesapplication.ui.navigation
 
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.app.activitiesapplication.ui.home.HomeScreen
 import com.app.activitiesapplication.ui.posts.PostListScreen
 import com.app.activitiesapplication.ui.settings.SettingsScreen
 import com.app.activitiesapplication.ui.splash.SplashScreen
@@ -15,6 +15,7 @@ object Destinations {
     const val POSTS = "posts"
     const val SETTINGS = "settings"
     const val SPLASH = "splash"
+    const val HOME = "home"
 }
 
 @Composable
@@ -33,8 +34,16 @@ fun AppNavGraph(navController: NavHostController = rememberNavController(), modi
 
         composable(Destinations.SPLASH){
              SplashScreen{
-                 Log.e("AppNavGraph", "Navigating to Quotes Screen")
+                 navController.navigate(Destinations.HOME){
+                     popUpTo(Destinations.SPLASH) {
+                         inclusive = true
+                     }
+                 }
              }
+        }
+
+        composable(Destinations.HOME){
+            HomeScreen()
         }
     }
 }
