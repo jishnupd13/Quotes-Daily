@@ -10,6 +10,8 @@ plugins {
     // Add the Google services Gradle plugin
     id("com.google.gms.google-services")
 
+    //Crashlytics plugin
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -143,5 +145,9 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     // Remote Config without KTX helper
     implementation("com.google.firebase:firebase-config")
+
+    //Crashlytics
+    implementation("com.google.firebase:firebase-crashlytics-ndk")
+
 
 }
