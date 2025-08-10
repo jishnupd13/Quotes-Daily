@@ -6,14 +6,18 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kotlin.serialization)
     kotlin("kapt")
+
+    // Add the Google services Gradle plugin
+    id("com.google.gms.google-services")
+
 }
 
 android {
-    namespace = "com.app.activitiesapplication"
+    namespace = "com.app.quotes_daily"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.app.activitiesapplication"
+        applicationId = "com.app.quotes_daily"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -106,5 +110,12 @@ dependencies {
 
     //Material Design Icons
     implementation(libs.androidx.material.icons.extended)
+
+    // Import the Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:34.1.0"))
+
+    // When using the BoM, don't specify versions in Firebase dependencies
+    implementation("com.google.firebase:firebase-analytics")
+
 
 }
