@@ -21,20 +21,47 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+   signingConfigs {
+        val release by creating {
+            storeFile = rootProject.file("./signing/quotes_daily_release.jks")
+            storePassword = "qoutes_daily"
+            keyAlias = "qoutes_daily"
+            keyPassword = "qoutes_daily"
+        }
+
+        getByName("debug"){
+            storeFile = rootProject.file("./signing/quotes_daily_debug.jks")
+            storePassword = "qoutes_daily"
+            keyAlias = "qoutes_daily"
+            keyPassword = "qoutes_daily"
+        }
+    }
+
     buildTypes {
-        release {
+        debug {
             isMinifyEnabled = false
+            isShrinkResources = false
+            isDebuggable = true
+            signingConfig = signingConfigs["debug"]
+        }
+
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            signingConfig = signingConfigs["release"]
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
     }
+
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
