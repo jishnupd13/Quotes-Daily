@@ -142,12 +142,12 @@ dependencies {
 
     // Firebase
     implementation(platform(libs.firebase.bom))
-    implementation("com.google.firebase:firebase-analytics")
+    implementation(libs.firebase.analytics)
     // Remote Config without KTX helper
-    implementation("com.google.firebase:firebase-config")
+    implementation(libs.firebase.config)
 
     //Crashlytics
-    implementation("com.google.firebase:firebase-crashlytics-ndk")
+    implementation(libs.firebase.crashlytics.ndk)
 
 
 }
