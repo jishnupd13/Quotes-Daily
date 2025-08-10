@@ -30,6 +30,8 @@ import javax.inject.Singleton
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.DefaultRequest
 import com.app.quotes_daily.utils.BASE_URL
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -126,5 +128,16 @@ object AppModule {
     fun provideGetFavouritesUseCase(repository: com.app.quotes_daily.domain.repository.favourite.FavouriteRepository): com.app.quotes_daily.domain.usecase.favourite.GetFavouritesUseCase =
         com.app.quotes_daily.domain.usecase.favourite.GetFavouritesUseCase(repository)
 
+    // Firebase Remote Config
+    @Provides
+    @Singleton
+    fun provideFirebaseRemoteConfig(): FirebaseRemoteConfig = FirebaseRemoteConfig.getInstance().apply {
+        val configSettings = FirebaseRemoteConfigSettings.Builder()
+            .setMinimumFetchIntervalInSeconds(3600)
+            .build()
+        setConfigSettingsAsync(configSettings)
+        // Default value
+        setDefaultsAsync(mapOf("daily_quote" to "{ \"quote\":\"Do or Die\", \"author\":\"Mahatma Gandhi\" }"))
+    }
 
 }
