@@ -87,5 +87,44 @@ object AppModule {
     @Singleton
     fun provideGetQuotesUseCase(repository: QuotesRepository): GetQuotesUseCase = GetQuotesUseCase(repository)
 
+    // Room Database for Favourites
+    @Provides
+    @Singleton
+    fun provideFavouritesDatabase(@ApplicationContext context: Context): com.app.activitiesapplication.data.local.room.FavouritesDatabase =
+        androidx.room.Room.databaseBuilder(
+            context,
+            com.app.activitiesapplication.data.local.room.FavouritesDatabase::class.java,
+            "favourites"
+        ).build()
+
+    @Provides
+    @Singleton
+    fun provideFavouriteDao(db: com.app.activitiesapplication.data.local.room.FavouritesDatabase): com.app.activitiesapplication.data.local.room.FavouriteDao = db.favouriteDao()
+
+    @Provides
+    @Singleton
+    fun provideFavouriteRepository(dao: com.app.activitiesapplication.data.local.room.FavouriteDao): com.app.activitiesapplication.domain.repository.favourite.FavouriteRepository =
+        com.app.activitiesapplication.data.repository.favourite.FavouriteRepositoryImpl(dao)
+
+    @Provides
+    @Singleton
+    fun provideAddToFavouriteUseCase(repository: com.app.activitiesapplication.domain.repository.favourite.FavouriteRepository): com.app.activitiesapplication.domain.usecase.favourite.AddToFavouriteUseCase =
+        com.app.activitiesapplication.domain.usecase.favourite.AddToFavouriteUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideRemoveFromFavouriteUseCase(repository: com.app.activitiesapplication.domain.repository.favourite.FavouriteRepository): com.app.activitiesapplication.domain.usecase.favourite.RemoveFromFavouriteUseCase =
+        com.app.activitiesapplication.domain.usecase.favourite.RemoveFromFavouriteUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideIsFavouriteUseCase(repository: com.app.activitiesapplication.domain.repository.favourite.FavouriteRepository): com.app.activitiesapplication.domain.usecase.favourite.IsFavouriteUseCase =
+        com.app.activitiesapplication.domain.usecase.favourite.IsFavouriteUseCase(repository)
+
+    @Provides
+    @Singleton
+    fun provideGetFavouritesUseCase(repository: com.app.activitiesapplication.domain.repository.favourite.FavouriteRepository): com.app.activitiesapplication.domain.usecase.favourite.GetFavouritesUseCase =
+        com.app.activitiesapplication.domain.usecase.favourite.GetFavouritesUseCase(repository)
+
 
 }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -33,12 +34,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.app.activitiesapplication.domain.model.quotes.Quotes
 import com.app.activitiesapplication.ui.theme.primaryColor
 import com.app.activitiesapplication.viewmodel.quotes.QuotesViewModel
+import androidx.compose.foundation.clickable
 
 @Composable
 fun Quotes(
     viewModel: QuotesViewModel = hiltViewModel()
 ){
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val favouriteMap by viewModel.favouriteMap.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -64,7 +67,12 @@ fun Quotes(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
                 ) {
                     items(quotes){ item->
-                        QuotesItem(quote = item)
+                        val isFav = item.id?.let { favouriteMap[it] } ?: false
+                        QuotesItem(
+                            quote = item,
+                            isFavourite = isFav,
+                            onFavouriteClick = { viewModel.onFavouriteToggle(item) }
+                        )
                     }
                 }
             }
@@ -75,7 +83,9 @@ fun Quotes(
 
 @Composable
 fun QuotesItem(
-    quote: Quotes
+    quote: Quotes,
+    isFavourite: Boolean,
+    onFavouriteClick: () -> Unit
 ){
     Card(
         modifier = Modifier
@@ -109,13 +119,17 @@ fun QuotesItem(
                 )
             }
 
+            val icon = if (isFavourite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
+            val tintColor = if (isFavourite) primaryColor else Color.Gray
+
             Image(
-                imageVector = Icons.Filled.Favorite,
+                imageVector = icon,
                 contentDescription = "Favorite Item",
                 modifier = Modifier
                     .size(30.dp)
-                    .padding(end = 8.dp),
-                colorFilter = ColorFilter.tint(primaryColor)
+                    .padding(end = 8.dp)
+                    .clickable { onFavouriteClick() },
+                colorFilter = ColorFilter.tint(tintColor)
             )
         }
     }
@@ -125,7 +139,9 @@ fun QuotesItem(
 @Composable
 fun QuotesItemPreview(){
     QuotesItem(
-        quote = Quotes(id = 1, quote = "Sample Quote", author = "Author Name")
+        quote = Quotes(id = 1, quote = "Sample Quote", author = "Author Name"),
+        isFavourite = false,
+        onFavouriteClick = {}
     )
 }
 
