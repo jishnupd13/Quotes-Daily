@@ -102,7 +102,7 @@ fun QuotesTile(
     }
 }
 
-@Preview(showBackground = true, showSystemUi = true)
+@Preview(showBackground = true)
 @Composable
 fun QuotesTilePreview(){
     QuotesTile(
