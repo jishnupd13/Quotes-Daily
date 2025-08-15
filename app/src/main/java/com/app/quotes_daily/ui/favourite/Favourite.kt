@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -20,6 +22,7 @@ import com.app.quotes_daily.ui.quotes.QuotesItem
 import com.app.quotes_daily.viewmodel.favourite.FavouriteViewModel
 import com.app.quotes_daily.domain.model.quotes.Quotes
 import androidx.compose.ui.unit.dp
+import com.app.quotes_daily.ui.components.AppBar
 
 @Composable
 fun FavouriteScreen(
@@ -27,40 +30,51 @@ fun FavouriteScreen(
 ){
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    when(uiState){
-        is FavouriteViewModel.FavouriteUiState.Loading -> {
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                CircularProgressIndicator()
-            }
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            AppBar("Favourites")
         }
-        is FavouriteViewModel.FavouriteUiState.Success -> {
-            val list = (uiState as FavouriteViewModel.FavouriteUiState.Success).favourites
-
-            if(list.isEmpty()){
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ){
-                    // Show empty message
-                    androidx.compose.material3.Text(text = "No favourites yet")
+    ) { innerPaddingValues->
+        Surface(
+            modifier = Modifier.padding(innerPaddingValues),
+        ) {
+            when(uiState){
+                is FavouriteViewModel.FavouriteUiState.Loading -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }else{
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
-                ){
-                    items(list){ item ->
-                        // Reuse QuotesItem with isFavourite true
-                        QuotesItem(
-                            quote = item,
-                            isFavourite = true,
-                            onFavouriteClick = { viewModel.onRemoveFavourite(item) }
-                        )
+                is FavouriteViewModel.FavouriteUiState.Success -> {
+                    val list = (uiState as FavouriteViewModel.FavouriteUiState.Success).favourites
+
+                    if(list.isEmpty()){
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ){
+                            // Show empty message
+                            androidx.compose.material3.Text(text = "No favourites yet")
+                        }
+                    }else{
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                        ){
+                            items(list){ item ->
+                                // Reuse QuotesItem with isFavourite true
+                                QuotesItem(
+                                    quote = item,
+                                    isFavourite = true,
+                                    onFavouriteClick = { viewModel.onRemoveFavourite(item) }
+                                )
+                            }
+                        }
                     }
                 }
             }

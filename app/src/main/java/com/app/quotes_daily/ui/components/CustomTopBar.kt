@@ -19,7 +19,9 @@ fun AppBar(
         title = {
             Text(
                 text = title,
-                fontSize = 14.sp
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontSize = 18.sp
+                ),
             )
         },
         colors = TopAppBarDefaults.topAppBarColors(

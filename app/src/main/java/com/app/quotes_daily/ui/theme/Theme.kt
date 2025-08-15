@@ -1,6 +1,9 @@
 package com.app.quotes_daily.ui.theme
 
+import android.app.Activity
+import android.graphics.Color
 import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -8,6 +11,11 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import androidx.compose.runtime.SideEffect
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.compose.ui.graphics.toArgb
 
 private val DarkColorScheme = darkColorScheme(
     primary = primaryColor,
@@ -20,6 +28,8 @@ private val LightColorScheme = lightColorScheme(
     secondary = whiteColor,
     tertiary = whiteColor,
 )
+
+
 
 @Composable
 fun ActivitiesApplicationTheme(
@@ -39,9 +49,19 @@ fun ActivitiesApplicationTheme(
         else -> LightColorScheme
     }
 
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            window.statusBarColor = primaryColor.toArgb()
+            val insetsController = WindowInsetsControllerCompat(window, view)
+            insetsController.isAppearanceLightStatusBars = false // Set to false for light icons on blue background
+        }
+    }
+
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = AppTypography,
         content = content
     )
 }

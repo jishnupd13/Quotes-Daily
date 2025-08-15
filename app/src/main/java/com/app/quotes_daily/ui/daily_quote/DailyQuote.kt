@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.app.quotes_daily.ui.components.AppBar
 import com.app.quotes_daily.viewmodel.daily_quote.DailyQuoteViewModel
 import kotlin.math.max
 
@@ -38,25 +40,35 @@ fun DailyQuoteScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollState = rememberScrollState()
 
-    Column(
+    Scaffold(
         modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        when (state) {
-            is DailyQuoteViewModel.DailyQuoteUiState.Loading -> {
-                CircularProgressIndicator()
-            }
-            is DailyQuoteViewModel.DailyQuoteUiState.Error -> {
-                Text(text = (state as DailyQuoteViewModel.DailyQuoteUiState.Error).message)
-            }
-            is DailyQuoteViewModel.DailyQuoteUiState.Success -> {
-                val data = state as DailyQuoteViewModel.DailyQuoteUiState.Success
-                QuotesTile(
-                    quote = data.quote,
-                    author = data.author,
-                    scrollState = scrollState
-                )
+        topBar = {
+            AppBar(title = "Daily Quote")
+        }
+    ) { innerPaddingValues->
+
+        Column(
+            modifier = Modifier
+                .padding(innerPaddingValues)
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            when (state) {
+                is DailyQuoteViewModel.DailyQuoteUiState.Loading -> {
+                    CircularProgressIndicator()
+                }
+                is DailyQuoteViewModel.DailyQuoteUiState.Error -> {
+                    Text(text = (state as DailyQuoteViewModel.DailyQuoteUiState.Error).message)
+                }
+                is DailyQuoteViewModel.DailyQuoteUiState.Success -> {
+                    val data = state as DailyQuoteViewModel.DailyQuoteUiState.Success
+                    QuotesTile(
+                        quote = data.quote,
+                        author = data.author,
+                        scrollState = scrollState
+                    )
+                }
             }
         }
     }
