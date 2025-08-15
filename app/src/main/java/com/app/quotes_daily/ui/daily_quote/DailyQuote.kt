@@ -92,7 +92,7 @@ fun QuotesTile(
             fontStyle = FontStyle.Italic,
             lineHeight = 1.5.em,
             modifier = Modifier
-                .padding(horizontal = 14.dp)
+                .padding(horizontal = 16.dp)
                 .fillMaxWidth(),
             textAlign = TextAlign.Center,
         )
