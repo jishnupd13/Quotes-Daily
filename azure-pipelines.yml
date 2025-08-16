@@ -7,7 +7,7 @@ trigger:
   - feature/azure_closes_testing
 
 pool:
-  name: AndroidAgentSelfHost   # must exactly match your pool name in Azure DevOps
+  name: Default   # must exactly match your pool name in Azure DevOps
 
 steps:
   - task: Gradle@2
