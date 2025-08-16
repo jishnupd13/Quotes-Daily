@@ -18,5 +18,5 @@ steps:
       serviceConnection: 'Quotes Daily Service connection'   # Name of your Google Play service connection in Azure
       applicationId: 'com.app.quotes_daily'               # Replace with your app’s packageName from Play Console
       bundleFile: 'app/build/outputs/bundle/release/app-release.aab'
-      track: 'closed'
+      track: 'alpha'
       trackName: 'Closed Test Gamma'
