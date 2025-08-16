@@ -10,7 +10,7 @@ trigger:
 #  vmImage: 'macos-latest' - old setup
 
 pool:
-  name: 'AndroidAgentSelfHost'
+  name: AndroidAgentSelfHost
 
 steps:
 - task: Gradle@2
