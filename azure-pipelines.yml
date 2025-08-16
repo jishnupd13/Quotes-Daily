@@ -1,25 +1,22 @@
-# Android
-# Build your Android project with Gradle.
-# Add steps that test, sign, and distribute the APK, save build artifacts, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/android
-
 trigger:
   - feature/azure_closes_testing
 
 pool:
-  name: Default   # your self-hosted pool
+  name: Default   # Your self-hosted pool on Mac
 
 steps:
-  # Run Gradle to build Release AAB
+  # Step 1: Build the Release AAB
   - task: Gradle@2
     inputs:
       gradleWrapperFile: 'gradlew'
       gradleOptions: '-Xmx3072m'
       tasks: 'bundleRelease'
 
-  # Publish the generated AAB as an artifact so you can download it
-  - task: PublishBuildArtifacts@1
+  # Step 2: Publish to Google Play Closed Testing (Gamma)
+  - task: GooglePlayRelease@4
     inputs:
-      PathtoPublish: 'app/build/outputs/bundle/release/app-release.aab'
-      ArtifactName: 'release-aab'
-      publishLocation: 'Container'
+      serviceConnection: 'Quotes Daily Service connection'   # Name of your Google Play service connection in Azure
+      applicationId: 'com.app.quotes_daily'               # Replace with your app’s packageName from Play Console
+      bundleFile: 'app/build/outputs/bundle/release/app-release.aab'
+      track: 'closed'
+      trackName: 'Closed Test Gamma'
