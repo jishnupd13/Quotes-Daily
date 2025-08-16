@@ -7,14 +7,19 @@ trigger:
   - feature/azure_closes_testing
 
 pool:
-  name: Default   # must exactly match your pool name in Azure DevOps
+  name: Default   # your self-hosted pool
 
 steps:
+  # Run Gradle to build Release AAB
   - task: Gradle@2
     inputs:
-      workingDirectory: ''       # optional, can remove if not needed
       gradleWrapperFile: 'gradlew'
       gradleOptions: '-Xmx3072m'
-      publishJUnitResults: false
-      testResultsFiles: '**/TEST-*.xml'
-      tasks: 'assembleDebug'
+      tasks: 'bundleRelease'
+
+  # Publish the generated AAB as an artifact so you can download it
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'app/build/outputs/bundle/release/app-release.aab'
+      ArtifactName: 'release-aab'
+      publishLocation: 'Container'
