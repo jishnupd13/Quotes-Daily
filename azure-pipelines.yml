@@ -6,8 +6,11 @@
 trigger:
 - feature/azure_closes_testing
 
+# pool:
+#  vmImage: 'macos-latest' - old setup
+
 pool:
-  vmImage: 'macos-latest'
+  name: 'AndroidAgentSelfHost'
 
 steps:
 - task: Gradle@2
