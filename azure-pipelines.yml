@@ -4,20 +4,17 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/android
 
 trigger:
-- feature/azure_closes_testing
-
-# pool:
-#  vmImage: 'macos-latest' - old setup
+  - feature/azure_closes_testing
 
 pool:
-  name: AndroidAgentSelfHost
+  name: AndroidAgentSelfHost   # must exactly match your pool name in Azure DevOps
 
 steps:
-- task: Gradle@2
-  inputs:
-    workingDirectory: ''
-    gradleWrapperFile: 'gradlew'
-    gradleOptions: '-Xmx3072m'
-    publishJUnitResults: false
-    testResultsFiles: '**/TEST-*.xml'
-    tasks: 'assembleDebug'
+  - task: Gradle@2
+    inputs:
+      workingDirectory: ''       # optional, can remove if not needed
+      gradleWrapperFile: 'gradlew'
+      gradleOptions: '-Xmx3072m'
+      publishJUnitResults: false
+      testResultsFiles: '**/TEST-*.xml'
+      tasks: 'assembleDebug'
