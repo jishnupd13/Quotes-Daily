@@ -1,27 +1,38 @@
-# Gradle
-# Build your Java project and run tests with Gradle using a Gradle wrapper script.
-# Add steps that analyze code, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/java
-# For more information, see https://aka.ms/yaml-schema
 trigger:
   - development
 
 pool:
   name: Default   # Your self-hosted pool on Mac
 
-steps:
-  # Step 1: Build the Release AAB
-  - task: Gradle@2
-    inputs:
-      gradleWrapperFile: 'gradlew'
-      gradleOptions: '-Xmx3072m'
-      tasks: 'bundleRelease'
+jobs:
+  # Job 1: Build Release and Upload to Play Store
+  - job: ReleaseBuild
+    displayName: "Build Release & Upload"
+    pool:
+      name: Default
+    steps:
+      - task: Gradle@2
+        inputs:
+          gradleWrapperFile: 'gradlew'
+          gradleOptions: '-Xmx3072m'
+          tasks: 'bundleRelease'
 
-  # Step 2: Publish to Google Play Closed Testing (Gamma)
-  - task: GooglePlayRelease@4
-    inputs:
-      serviceConnection: 'Quotes Daily Service connection'   # Name of your Google Play service connection in Azure
-      applicationId: 'com.app.quotes_daily'               # Replace with your app’s packageName from Play Console
-      bundleFile: 'app/build/outputs/bundle/release/app-release.aab'
-      track: 'Closed Test Gamma'
-      trackName: 'Closed Test Gamma'
+      - task: GooglePlayRelease@4
+        inputs:
+          serviceConnection: 'Quotes Daily Service connection'
+          applicationId: 'com.app.quotes_daily'
+          bundleFile: 'app/build/outputs/bundle/release/app-release.aab'
+          track: 'alpha'
+          trackName: 'Closed testing - Closed Test Gamma'
+
+  # Job 2: Build Debug APK
+  - job: DebugBuild
+    displayName: "Build Debug APK"
+    pool:
+      name: Default
+    steps:
+      - task: Gradle@2
+        inputs:
+          gradleWrapperFile: 'gradlew'
+          gradleOptions: '-Xmx3072m'
+          tasks: 'assembleDebug'
