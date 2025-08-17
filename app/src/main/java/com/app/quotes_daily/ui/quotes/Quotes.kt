@@ -129,7 +129,7 @@ fun QuotesItem(
                 Spacer(modifier = Modifier.size(14.dp))
 
                 Text(
-                    text = quote.author?:"",
+                    text = quote.author?:"Unknown",
                     color = Color.DarkGray,
                     fontFamily = AppFontFamily,
                     fontWeight = FontWeight.Normal,

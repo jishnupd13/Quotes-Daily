@@ -2,21 +2,26 @@
 # Build your Java project and run tests with Gradle using a Gradle wrapper script.
 # Add steps that analyze code, save build artifacts, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/java
-
+# For more information, see https://aka.ms/yaml-schema
 trigger:
-- feature/azure_closes_testing
+  - feature/azure_closes_testing
 
 pool:
-  vmImage: ubuntu-latest
+  name: Default   # Your self-hosted pool on Mac
 
 steps:
-- task: Gradle@3
-  inputs:
-    gradleWrapperFile: 'gradlew'  # Path to your Gradle wrapper
-    tasks: 'build'  # Replace with the tasks you want to run
-    options: '-Xmx3072m' 
-    publishJUnitResults: true
-    testResultsFiles: '**/TEST-*.xml'  # Updated pattern for test result files
-    javaHomeOption: 'JDKVersion'
-    jdkVersionOption: '1.11'  # Replace with your JDK version
-    jdkArchitectureOption: 'x64'
+  # Step 1: Build the Release AAB
+  - task: Gradle@2
+    inputs:
+      gradleWrapperFile: 'gradlew'
+      gradleOptions: '-Xmx3072m'
+      tasks: 'bundleRelease'
+
+  # Step 2: Publish to Google Play Closed Testing (Gamma)
+  - task: GooglePlayRelease@4
+    inputs:
+      serviceConnection: 'Quotes Daily Service connection'   # Name of your Google Play service connection in Azure
+      applicationId: 'com.app.quotes_daily'               # Replace with your app’s packageName from Play Console
+      bundleFile: 'app/build/outputs/bundle/release/app-release.aab'
+      track: 'Closed Test Gamma'
+      trackName: 'Closed Test Gamma'
