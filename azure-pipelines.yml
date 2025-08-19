@@ -4,7 +4,22 @@ trigger:
 pool:
   name: Default   # Your self-hosted Mac agent
 
+resources:
+  repositories:
+    - repository: appiumTests
+      type: git
+      name: Quotes Daily/Quotes_Daily_Appium   # Project/Repo format
+
 steps:
+  # Disable default checkout of self first
+  - checkout: none
+
+  # Checkout main repo (Android app)
+  - checkout: self
+
+  # Checkout Appium repo
+  - checkout: appiumTests
+
   # 1️⃣ Build Release AAB
   - task: Gradle@2
     inputs:
@@ -19,28 +34,25 @@ steps:
       ArtifactName: 'ReleaseAAB'
       publishLocation: 'Container'
 
-  # 3️⃣ Checkout Appium tests repo
-  - checkout: appiumTests
-
-  # 4️⃣ Install Node.js dependencies for Appium tests
+  # 3️⃣ Install Node.js dependencies for Appium tests
   - script: |
       npm install
     workingDirectory: '$(Build.SourcesDirectory)/appiumTests'
     displayName: 'Install Node.js dependencies for Appium'
 
-  # 5️⃣ Start Appium server
+  # 4️⃣ Start Appium server
   - script: |
       appium &   # Start Appium in background
       sleep 5
     displayName: 'Start Appium server'
 
-  # 6️⃣ Run Appium tests
+  # 5️⃣ Run Appium tests
   - script: |
       npm test
     workingDirectory: '$(Build.SourcesDirectory)/appiumTests'
     displayName: 'Run Appium tests'
 
-  # 7️⃣ Upload AAB to Google Play only if tests pass
+  # 6️⃣ Upload AAB to Google Play only if tests pass
   - task: GooglePlayRelease@4
     inputs:
       serviceConnection: 'Quotes Daily Service connection'
