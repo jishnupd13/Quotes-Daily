@@ -65,11 +65,10 @@ jobs:
       # Clean checkout of Appium repo into fixed folder
       - checkout: appiumTests
         clean: true
-        path: Qoutes_Daily_Appium
+
 
       # Run Appium tests in the correct folder
-      - script: |
-          cd $(Build.SourcesDirectory)/Qoutes_Daily_Appium
+      - script:
           ./gradlew clean test -PappPath=$(System.DefaultWorkingDirectory)/apk/app-release.apk
         displayName: "Run Appium Tests"
 
