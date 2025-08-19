@@ -55,7 +55,7 @@ jobs:
       # Run Appium tests (make sure repo is added as resource)
       - script: |
           cd ../Qoutes_Daily_Appium
-          ./gradlew clean test
+          ./gradlew clean test -PappPath=$(System.DefaultWorkingDirectory)/releaseBundle/app-release.aab
         displayName: "Run Appium Tests"
 
   # Job 3: Publish to Google Play (only if tests succeed)
