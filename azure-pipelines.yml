@@ -58,6 +58,10 @@ jobs:
 
       # Checkout Appium test repo
       - checkout: appiumTests
+        clean: true
+
+
+
 
       # Run Appium tests
       - script: |
