@@ -4,7 +4,11 @@ trigger:
 pool:
   name: Default
 
+resources:
+  repositories:
+    - repository: another_repo
+      type: git
+      name: "Quotes Daily/another_re"
+
 steps:
   - checkout: self
-
-  - script: dir $(Build.SourcesDirectory)
