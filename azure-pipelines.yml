@@ -61,19 +61,17 @@ jobs:
 
       # Checkout Appium test repo into a fixed folder
       - checkout: appiumTests
-        clean: true
-        path: Qoutes_Daily_Appium
 
       # Run Appium tests
       - script: |
-          cd $(Build.SourcesDirectory)/Qoutes_Daily_Appium
+          cd $(Build.SourcesDirectory)
           ./gradlew clean test -PappPath=$(System.DefaultWorkingDirectory)/apk/app-release.apk
         displayName: "Run Appium Tests"
 
       # Publish HTML report as artifact
       - task: PublishBuildArtifacts@1
         inputs:
-          PathtoPublish: '$(Build.SourcesDirectory)/Qoutes_Daily_Appium/app/build/reports/tests/test'
+          PathtoPublish: '$(Build.SourcesDirectory)/app/build/reports/tests/test'
           ArtifactName: 'AppiumHTMLReport'
           publishLocation: 'Container'
 
