@@ -1,13 +1,15 @@
-trigger: none
-
-pool:
-  name: Development
+trigger: development
 
 resources:
   repositories:
     - repository: appiumTests
       type: git
       name: "Quotes Daily/Quotes_Daily_Appium"
+
+pool:
+  name: Development
+
+
 
 steps:
   - checkout: self
