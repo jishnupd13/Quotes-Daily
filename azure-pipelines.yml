@@ -1,86 +1,94 @@
 trigger:
-  - development   # Pipeline runs only when development branch updates
+  branches:
+    include:
+      - development   # Only trigger on development branch
 
 pool:
-  name: Default   # Self-hosted macOS agent
-
-resources:
-  repositories:
-    - repository: appiumTests
-      type: git
-      name: "Quotes Daily/Qoutes_Daily_Appium"
+  name: Default   # Self-hosted Mac agent
 
 jobs:
-  # Job 1: Build Release (APK + AAB) and publish as artifacts
-  - job: BuildRelease
-    displayName: "Build Release APK & AAB"
+  # Job 1: Build Release and Publish Artifact
+  - job: ReleaseBuild
+    displayName: "Build Release AAB"
+    pool:
+      name: Default
     steps:
-      - checkout: self
-
       - task: Gradle@2
         inputs:
           gradleWrapperFile: 'gradlew'
           gradleOptions: '-Xmx3072m'
-          tasks: 'assembleRelease bundleRelease'
+          tasks: 'bundleRelease'
 
-      # Publish APK and AAB as pipeline artifacts
-      - publish: app/build/outputs
-        artifact: drop
+      - task: PublishBuildArtifacts@1
+        inputs:
+          PathtoPublish: 'app/build/outputs/bundle/release/app-release.aab'
+          ArtifactName: 'releaseBundle'
+          publishLocation: 'Container'
 
-  # Job 2: Run Appium Tests using Release APK
+  # Job 2: Run Appium Tests on Release AAB
   - job: RunAppiumTests
-    displayName: "Run Appium Tests on Release APK"
-    dependsOn: BuildRelease
+    displayName: "Run Appium Tests"
+    dependsOn: ReleaseBuild
+    pool:
+      name: Default
     steps:
-      - checkout: appiumTests   # fetch Appium test repo
-
-      # Download the Release build artifact
-      - download: current
-        artifact: drop
-
-      # Ensure Java 11 is installed
+      # Check if Java 11 is installed, if not install
       - script: |
-          if ! java -version 2>&1 | grep -q '11.'; then
-            echo "Java 11 not found, installing..."
+          if ! java -version 2>&1 | grep '11.'; then
+            echo "Java 11 not found. Installing..."
             brew tap homebrew/cask-versions
             brew install --cask temurin11
           else
-            echo "Java 11 is already installed"
+            echo "Java 11 already installed."
           fi
           java -version
-        displayName: "Check & Install Java 11"
+        displayName: "Ensure Java 11 Installed"
 
-      # Install Appium & doctor check
-      - script: |
-          npm install -g appium
-          npm install -g appium-doctor
-          appium-doctor --android
-        displayName: "Install Appium & Doctor Check"
+      # Download the Release AAB from artifacts
+      - task: DownloadBuildArtifacts@0
+        inputs:
+          buildType: 'current'
+          downloadType: 'single'
+          artifactName: 'releaseBundle'
+          downloadPath: '$(System.DefaultWorkingDirectory)'
 
-      # Start Appium server in background
+      # Run Appium tests (make sure repo is added as resource)
       - script: |
-          nohup appium > appium.log 2>&1 &
-        displayName: "Start Appium Server"
-
-      # Run Appium tests with Release APK (picked from artifacts)
-      - script: |
-          ./gradlew clean test \
-            -PapkPath=$(Pipeline.Workspace)/drop/app/release/app-release.apk
-        workingDirectory: $(Build.SourcesDirectory)
+          cd ../Qoutes_Daily_Appium
+          ./gradlew clean test
         displayName: "Run Appium Tests"
 
-  # Job 3: Upload AAB to Google Play (only if tests pass)
-  - job: ReleaseToPlay
-    displayName: "Upload to Google Play"
+      # Email Test Report
+      - task: SendEmailReport@1
+        inputs:
+          to: 'jishnupd13@gmail.com;Anand@applab.qa'
+          cc: 'Anand@applab.qa'
+          subject: 'Appium Test Report - Quotes Daily'
+          sendCondition: 'Always'   # options: Always, OnFailure, OnSuccess, OnNewFailures
+          includeCommits: true
+          includeFailures: true
+          includeTaskLog: true
+          failOnError: false
+
+  # Job 3: Publish to Google Play (only if tests succeed)
+  - job: PublishToPlayStore
+    displayName: "Upload AAB to Google Play"
     dependsOn: RunAppiumTests
+    condition: succeeded()
+    pool:
+      name: Default
     steps:
-      - download: current
-        artifact: drop
+      - task: DownloadBuildArtifacts@0
+        inputs:
+          buildType: 'current'
+          downloadType: 'single'
+          artifactName: 'releaseBundle'
+          downloadPath: '$(System.DefaultWorkingDirectory)'
 
       - task: GooglePlayRelease@4
         inputs:
           serviceConnection: 'Quotes Daily Service connection'
           applicationId: 'com.app.quotes_daily'
-          bundleFile: '$(Pipeline.Workspace)/drop/app/release/app-release.aab'
+          bundleFile: '$(System.DefaultWorkingDirectory)/releaseBundle/app-release.aab'
           track: 'alpha'
           trackName: 'Closed testing - Closed Test Gamma'
