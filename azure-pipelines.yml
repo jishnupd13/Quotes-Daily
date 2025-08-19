@@ -32,7 +32,7 @@ jobs:
     pool:
       name: Default
     steps:
-      # Ensure Java 11 Installed
+      # Check if Java 11 is installed, if not install
       - script: |
           if ! java -version 2>&1 | grep '11.'; then
             echo "Java 11 not found. Installing..."
@@ -44,10 +44,6 @@ jobs:
           java -version
         displayName: "Ensure Java 11 Installed"
 
-      # Checkout the Appium tests repo
-      - checkout: self
-      - checkout: Qoutes_Daily_Appium   # Appium repo (add in resources)
-
       # Download the Release AAB from artifacts
       - task: DownloadBuildArtifacts@0
         inputs:
@@ -56,30 +52,18 @@ jobs:
           artifactName: 'releaseBundle'
           downloadPath: '$(System.DefaultWorkingDirectory)'
 
-      # Run Appium tests (Gradle)
+      # Run Appium tests (make sure repo is added as resource)
       - script: |
-          cd Qoutes_Daily_Appium
+          cd ../Qoutes_Daily_Appium
           ./gradlew clean test
         displayName: "Run Appium Tests"
-
-      # ✅ Publish JUnit results into Azure DevOps Tests tab
-      - task: PublishTestResults@2
-        displayName: "Publish Appium Test Results"
-        inputs:
-          testResultsFormat: 'JUnit'
-          testResultsFiles: 'Qoutes_Daily_Appium/build/test-results/test/TEST-*.xml'
-          failTaskOnFailedTests: true
-
-      # ✅ Publish HTML report as artifact
-      - publish: Qoutes_Daily_Appium/build/reports/tests/test
-        artifact: AppiumHtmlReport
-        displayName: "Publish Appium HTML Report"
 
   # Job 3: Publish to Google Play (only if tests succeed)
   - job: PublishToPlayStore
     displayName: "Upload AAB to Google Play"
-    dependsOn: RunAppiumTests
-    condition: succeeded()
+    dependsOn:
+      - RunAppiumTests   # depends on Appium test job
+    condition: succeeded('RunAppiumTests')   # publish only if tests succeed
     pool:
       name: Default
     steps:
