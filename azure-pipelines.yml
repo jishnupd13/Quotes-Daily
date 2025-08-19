@@ -1,19 +1,11 @@
 trigger: development
 
-resources:
-  repositories:
-    - repository: appiumTests
-      type: git
-      name: "Quotes Daily/Quotes_Daily_Appium"
-
 pool:
-  name: Development
-
+  name: Default
 
 
 steps:
   - checkout: self
-  - checkout: appiumTests
   - script: |
       echo "=== Android Repo (self) ==="
       ls -R $(Build.SourcesDirectory)
