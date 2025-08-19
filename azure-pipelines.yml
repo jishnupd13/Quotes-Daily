@@ -19,6 +19,9 @@ jobs:
     pool:
       name: Default
     steps:
+      - checkout: self
+        clean: true
+
       - task: Gradle@2
         inputs:
           gradleWrapperFile: 'gradlew'
@@ -56,12 +59,10 @@ jobs:
           artifactName: 'releaseApk'
           downloadPath: '$(System.DefaultWorkingDirectory)/apk'
 
-      # Checkout Appium test repo
+      # Checkout Appium test repo into a fixed folder
       - checkout: appiumTests
         clean: true
-
-
-
+        path: Qoutes_Daily_Appium
 
       # Run Appium tests
       - script: |
@@ -84,6 +85,9 @@ jobs:
     pool:
       name: Default
     steps:
+      - checkout: self
+        clean: true
+
       - task: Gradle@2
         inputs:
           gradleWrapperFile: 'gradlew'
@@ -118,4 +122,3 @@ jobs:
           bundleFile: '$(System.DefaultWorkingDirectory)/releaseBundle/app-release.aab'
           track: 'alpha'
           trackName: 'Closed testing - Closed Test Gamma'
-
