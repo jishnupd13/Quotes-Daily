@@ -1,15 +1,52 @@
+trigger:
+  - development
+
 pool:
   name: Default   # Your self-hosted Mac agent
 
+resources:
+  repositories:
+    - repository: appiumTests
+      type: git
+      name: Quotes Daily Appium   # Name of your Appium repo
+
 steps:
-  # 1️⃣ Build Release Bundle
+  # 1️⃣ Build Release AAB
   - task: Gradle@2
     inputs:
       gradleWrapperFile: 'gradlew'
       gradleOptions: '-Xmx3072m'
-      tasks: 'bundleRelease'
+      tasks: 'bundleRelease'   # generates .aab
 
-  # 2️⃣ Upload to Google Play
+  # 2️⃣ Publish AAB as artifact
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: 'app/build/outputs/bundle/release/app-release.aab'
+      ArtifactName: 'ReleaseAAB'
+      publishLocation: 'Container'
+
+  # 3️⃣ Checkout Appium tests repo
+  - checkout: appiumTests
+
+  # 4️⃣ Install Node.js dependencies for Appium tests
+  - script: |
+      npm install
+    workingDirectory: '$(Build.SourcesDirectory)/Quotes Daily Appium'
+    displayName: 'Install Node.js dependencies for Appium'
+
+  # 5️⃣ Start Appium server
+  - script: |
+      appium &   # Start Appium in background
+      sleep 5
+    displayName: 'Start Appium server'
+
+  # 6️⃣ Run Appium tests
+  - script: |
+      npm test
+    workingDirectory: '$(Build.SourcesDirectory)/Quotes Daily Appium'
+    displayName: 'Run Appium tests'
+
+  # 7️⃣ Upload AAB to Google Play only if tests pass
   - task: GooglePlayRelease@4
     inputs:
       serviceConnection: 'Quotes Daily Service connection'
