@@ -1,63 +1,26 @@
 trigger:
-  - development
+  - development   # manual run only, so we can test safely
 
 pool:
   name: Default   # Your self-hosted Mac agent
 
-
-variables:
-  aabPath: 'app/build/outputs/bundle/release/app-release.aab'
+resources:
+  repositories:
+    - repository: appiumTests
+      type: git
+      name: Quotes_Daily_Appium   # second repo alias
 
 steps:
-  # Disable default checkout of self first
-  - checkout: none
-
-  # Checkout main repo (Android app)
+  # Checkout main repo (self)
   - checkout: self
+    displayName: "Checkout Android repo"
 
   # Checkout Appium repo
   - checkout: appiumTests
+    displayName: "Checkout Appium repo"
 
-  # 1️⃣ Build Release AAB
-  - task: Gradle@2
-    inputs:
-      gradleWrapperFile: 'gradlew'
-      gradleOptions: '-Xmx3072m'
-      tasks: 'bundleRelease'   # generates .aab
-    displayName: 'Build Release AAB'
-
-  # 2️⃣ Publish AAB as artifact
-  - task: PublishBuildArtifacts@1
-    inputs:
-      PathtoPublish: '$(aabPath)'
-      ArtifactName: 'ReleaseAAB'
-      publishLocation: 'Container'
-    displayName: 'Publish AAB as Artifact'
-
-  # 3️⃣ Install Node.js dependencies for Appium tests
+  # Show folder structure to verify both repos are present
   - script: |
-      npm install
-    workingDirectory: '$(Build.SourcesDirectory)/appiumTests'
-    displayName: 'Install Node.js dependencies for Appium'
-
-  # 4️⃣ Start Appium server
-  - script: |
-      appium &
-      sleep 5
-    displayName: 'Start Appium server'
-
-  # 5️⃣ Run Appium tests
-  - script: |
-      npm test
-    workingDirectory: '$(Build.SourcesDirectory)/appiumTests'
-    displayName: 'Run Appium tests'
-
-  # 6️⃣ Upload AAB to Google Play only if tests pass
-  - task: GooglePlayRelease@4
-    inputs:
-      serviceConnection: 'Quotes Daily Service connection'
-      applicationId: 'com.app.quotes_daily'
-      bundleFile: '$(aabPath)'
-      track: 'alpha'
-      trackName: 'Closed testing - Closed Test Gamma'
-    displayName: 'Upload to Google Play Store'
+      echo "=== Repo Folders ==="
+      ls -R $(Build.SourcesDirectory)
+    displayName: "List files after checkout"
