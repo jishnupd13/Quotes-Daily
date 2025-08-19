@@ -10,6 +10,9 @@ resources:
       type: git
       name: Quotes Daily/Quotes_Daily_Appium   # Project/Repo format
 
+variables:
+  aabPath: 'app/build/outputs/bundle/release/app-release.aab'
+
 steps:
   # Disable default checkout of self first
   - checkout: none
@@ -26,13 +29,15 @@ steps:
       gradleWrapperFile: 'gradlew'
       gradleOptions: '-Xmx3072m'
       tasks: 'bundleRelease'   # generates .aab
+    displayName: 'Build Release AAB'
 
   # 2️⃣ Publish AAB as artifact
   - task: PublishBuildArtifacts@1
     inputs:
-      PathtoPublish: 'app/build/outputs/bundle/release/app-release.aab'
+      PathtoPublish: '$(aabPath)'
       ArtifactName: 'ReleaseAAB'
       publishLocation: 'Container'
+    displayName: 'Publish AAB as Artifact'
 
   # 3️⃣ Install Node.js dependencies for Appium tests
   - script: |
@@ -42,7 +47,7 @@ steps:
 
   # 4️⃣ Start Appium server
   - script: |
-      appium &   # Start Appium in background
+      appium &
       sleep 5
     displayName: 'Start Appium server'
 
@@ -57,6 +62,7 @@ steps:
     inputs:
       serviceConnection: 'Quotes Daily Service connection'
       applicationId: 'com.app.quotes_daily'
-      bundleFile: 'app/build/outputs/bundle/release/app-release.aab'
+      bundleFile: '$(aabPath)'
       track: 'alpha'
       trackName: 'Closed testing - Closed Test Gamma'
+    displayName: 'Upload to Google Play Store'
