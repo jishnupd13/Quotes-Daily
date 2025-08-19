@@ -61,10 +61,10 @@ jobs:
       # Email Test Report
       - task: SendEmailReport@1
         inputs:
-          to: 'jishnupd13@gmail.com;Anand@applab.qa'
-          cc: 'Anand@applab.qa'
+          to: 'jishnupd13@gmail.com'
+          cc: 'jishnupd13@gmail.com'
           subject: 'Appium Test Report - Quotes Daily'
-          sendCondition: 'Always'   # options: Always, OnFailure, OnSuccess, OnNewFailures
+          sendCondition: 'Always'
           includeCommits: true
           includeFailures: true
           includeTaskLog: true
