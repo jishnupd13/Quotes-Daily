@@ -8,7 +8,7 @@ resources:
   repositories:
     - repository: appiumTests
       type: git
-      name: Quotes Daily/Quotes_Daily_Appium   # Project/Repo format
+      name: 'Quotes Daily/Quotes_Daily_Appium'   # Project/Repo format
 
 variables:
   aabPath: 'app/build/outputs/bundle/release/app-release.aab'
