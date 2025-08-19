@@ -38,12 +38,17 @@ jobs:
       - download: current
         artifact: drop
 
-      # Install Java (required for Android + Appium tests)
-      - task: JavaToolInstaller@0
-        inputs:
-          versionSpec: '11'
-          jdkArchitectureOption: 'x64'
-          jdkSourceOption: 'PreInstalled'
+      # Ensure Java 11 is installed
+      - script: |
+          if ! java -version 2>&1 | grep -q '11.'; then
+            echo "Java 11 not found, installing..."
+            brew tap homebrew/cask-versions
+            brew install --cask temurin11
+          else
+            echo "Java 11 is already installed"
+          fi
+          java -version
+        displayName: "Check & Install Java 11"
 
       # Install Appium & doctor check
       - script: |
