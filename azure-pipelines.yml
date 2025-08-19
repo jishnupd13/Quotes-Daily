@@ -1,15 +1,37 @@
 trigger:
-  - development
+  branches:
+    include:
+      - development
 
 pool:
-  name: Default
+  name: Default   # Self-hosted agent on Mac
 
-resources:
-  repositories:
-    - repository: another_repo
-      type: git
-      name: "Quotes Daily/Qoutes_Daily_Appium"
+jobs:
+  # Job 1: Build Debug APK
+  - job: DebugBuild
+    displayName: "Build Debug APK"
+    steps:
+      - task: Gradle@2
+        inputs:
+          gradleWrapperFile: 'gradlew'
+          gradleOptions: '-Xmx3072m'
+          tasks: 'assembleDebug'
 
-steps:
-  - checkout: self
-  - checkout: another_repo
+  # Job 2: Build Release & Upload to Play Store
+  - job: ReleaseBuild
+    displayName: "Build Release & Upload"
+    dependsOn: DebugBuild
+    steps:
+      - task: Gradle@2
+        inputs:
+          gradleWrapperFile: 'gradlew'
+          gradleOptions: '-Xmx3072m'
+          tasks: 'bundleRelease'
+
+      - task: GooglePlayRelease@4
+        inputs:
+          serviceConnection: 'Quotes Daily Service connection'
+          applicationId: 'com.app.quotes_daily'
+          bundleFile: '$(System.DefaultWorkingDirectory)/app/build/outputs/bundle/release/app-release.aab'
+          track: 'alpha'
+          trackName: 'Closed testing - Closed Test Gamma'
