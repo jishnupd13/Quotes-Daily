@@ -1,15 +1,17 @@
 trigger:
   branches:
     include:
-      - development
+      - development   # Only trigger on development branch
 
 pool:
   name: Default   # Self-hosted Mac agent
 
 jobs:
-  # Job 1: Build Release and Upload to Play Store
+  # Job 1: Build Release and Publish Artifact
   - job: ReleaseBuild
-    displayName: "Build Release & Upload"
+    displayName: "Build Release AAB"
+    pool:
+      name: Default
     steps:
       - task: Gradle@2
         inputs:
@@ -17,73 +19,65 @@ jobs:
           gradleOptions: '-Xmx3072m'
           tasks: 'bundleRelease'
 
-      - publish: app/build/outputs/bundle/release/app-release.aab
-        artifact: releaseBundle
+      - task: PublishBuildArtifacts@1
+        inputs:
+          PathtoPublish: 'app/build/outputs/bundle/release/app-release.aab'
+          ArtifactName: 'releaseBundle'
+          publishLocation: 'Container'
 
-  # Job 2: Run Appium Tests on Release Bundle
-  - job: AppiumTests
+  # Job 2: Run Appium Tests on Release AAB
+  - job: RunAppiumTests
     displayName: "Run Appium Tests"
     dependsOn: ReleaseBuild
+    pool:
+      name: Default
     steps:
-      - checkout: self
-      - checkout: Qoutes_Daily_Appium   # Your test repo
-
-      - download: current
-        artifact: releaseBundle
-
+      # Check if Java 11 is installed, if not install
       - script: |
-          echo "Installing dependencies for Appium tests..."
-          brew install node || true
-          brew install npm || true
-          npm install -g appium
+          if ! java -version 2>&1 | grep '11.'; then
+            echo "Java 11 not found. Installing..."
+            brew tap homebrew/cask-versions
+            brew install --cask temurin11
+          else
+            echo "Java 11 already installed."
+          fi
+          java -version
+        displayName: "Ensure Java 11 Installed"
 
-          echo "Running Appium tests on release AAB..."
-          ./gradlew -p Qoutes_Daily_Appium clean test
+      # Download the Release AAB from artifacts
+      - task: DownloadBuildArtifacts@0
+        inputs:
+          buildType: 'current'
+          downloadType: 'single'
+          artifactName: 'releaseBundle'
+          downloadPath: '$(System.DefaultWorkingDirectory)'
 
+      # Run Appium tests (make sure repo is added as resource)
+      - script: |
+          cd ../Qoutes_Daily_Appium
+          ./gradlew clean test
         displayName: "Run Appium Tests"
 
-      # Archive the test report
-      - publish: Qoutes_Daily_Appium/build/reports/tests/test
-        artifact: appiumTestReport
 
-      # Email the report manually
-      - script: |
-          echo "Preparing Appium test report email..."
-          REPORT_DIR="Qoutes_Daily_Appium/build/reports/tests/test"
-
-          if [ -d "$REPORT_DIR" ]; then
-            zip -r appium-test-report.zip "$REPORT_DIR"
-            echo "Appium test report zipped."
-          else
-            echo "No report directory found. Sending failure email."
-            echo "Appium tests did not produce a report." > email_body.txt
-          fi
-
-          # Send mail (requires sendmail/mailutils configured on the Mac agent)
-          if [ -f appium-test-report.zip ]; then
-            echo "Appium Tests Completed. See attached report." > email_body.txt
-            uuencode appium-test-report.zip appium-test-report.zip | \
-            mail -s "Appium Test Report - Quotes Daily" \
-            jishnupd13@gmail.com< email_body.txt
-          else
-            mail -s "Appium Test Report - Quotes Daily [FAILED]" \
-            jishnupd13@gmail.com,secondemail@example.com,manager@example.com < email_body.txt
-          fi
-        displayName: "Send Email with Appium Test Report"
-
-  # Job 3: Publish to Play Store (only if tests pass)
+  # Job 3: Publish to Google Play (only if tests succeed)
   - job: PublishToPlayStore
-    displayName: "Publish to Google Play"
-    dependsOn: AppiumTests
-    condition: succeeded()   # Only run if tests succeeded
+    displayName: "Upload AAB to Google Play"
+    dependsOn: RunAppiumTests
+    condition: succeeded()
+    pool:
+      name: Default
     steps:
-      - download: current
-        artifact: releaseBundle
+      - task: DownloadBuildArtifacts@0
+        inputs:
+          buildType: 'current'
+          downloadType: 'single'
+          artifactName: 'releaseBundle'
+          downloadPath: '$(System.DefaultWorkingDirectory)'
 
       - task: GooglePlayRelease@4
         inputs:
           serviceConnection: 'Quotes Daily Service connection'
           applicationId: 'com.app.quotes_daily'
-          bundleFile: '$(Pipeline.Workspace)/releaseBundle/app-release.aab'
+          bundleFile: '$(System.DefaultWorkingDirectory)/releaseBundle/app-release.aab'
           track: 'alpha'
           trackName: 'Closed testing - Closed Test Gamma'
