@@ -1,10 +1,17 @@
 trigger:
   branches:
     include:
-      - development   # Only trigger on development branch
+      - development   # Trigger only on development branch
 
 pool:
   name: Default   # Self-hosted Mac agent
+
+resources:
+  repositories:
+    - repository: appiumTests
+      type: git
+      name: "Quotes Daily/Qoutes_Daily_Appium"
+      ref: development
 
 jobs:
   # Job 1: Build Release APK and publish artifact
@@ -32,6 +39,7 @@ jobs:
     pool:
       name: Default
     steps:
+      # Ensure Java 11
       - script: |
           if ! java -version 2>&1 | grep '11.'; then
             echo "Java 11 not found. Installing..."
@@ -41,22 +49,29 @@ jobs:
           java -version
         displayName: "Ensure Java 11 Installed"
 
+      # Download APK artifact
       - task: DownloadBuildArtifacts@0
         inputs:
           buildType: 'current'
           downloadType: 'single'
           artifactName: 'releaseApk'
-          downloadPath: '$(System.DefaultWorkingDirectory)'
+          downloadPath: '$(System.DefaultWorkingDirectory)/apk'
 
+      # Checkout Appium test repo
+      - checkout: appiumTests
+
+      # Run Appium tests
       - script: |
-          cd ../Qoutes_Daily_Appium
-          ./gradlew clean test -PappPath=$(System.DefaultWorkingDirectory)/releaseApk/app-release.apk
+          cd $(Build.SourcesDirectory)/Qoutes_Daily_Appium
+          ./gradlew clean test -PappPath=$(System.DefaultWorkingDirectory)/apk/app-release.apk
         displayName: "Run Appium Tests"
 
-      - task: PublishTestResults@2
+      # Publish HTML report as artifact
+      - task: PublishBuildArtifacts@1
         inputs:
-          testResultsFiles: '**/build/test-results/test/TEST-*.xml'
-          testRunTitle: 'Appium Test Results'
+          PathtoPublish: '$(Build.SourcesDirectory)/Qoutes_Daily_Appium/app/build/reports/tests/test'
+          ArtifactName: 'AppiumHTMLReport'
+          publishLocation: 'Container'
 
   # Job 3: Build Release AAB and publish artifact (only if tests succeed)
   - job: BuildReleaseAAB
@@ -78,7 +93,7 @@ jobs:
           ArtifactName: 'releaseBundle'
           publishLocation: 'Container'
 
-  # Job 4: Publish AAB to Google Play (only if tests succeed)
+  # Job 4: Upload AAB to Google Play (only if tests succeed)
   - job: PublishToPlayStore
     displayName: "Upload AAB to Google Play"
     dependsOn: BuildReleaseAAB
