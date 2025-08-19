@@ -19,15 +19,18 @@ jobs:
     pool:
       name: Default
     steps:
+      # Clean checkout of main repo
       - checkout: self
         clean: true
 
+      # Gradle build for APK
       - task: Gradle@2
         inputs:
           gradleWrapperFile: 'gradlew'
           gradleOptions: '-Xmx3072m'
           tasks: 'assembleRelease'
 
+      # Publish APK artifact
       - task: PublishBuildArtifacts@1
         inputs:
           PathtoPublish: 'app/build/outputs/apk/release/app-release.apk'
@@ -41,7 +44,7 @@ jobs:
     pool:
       name: Default
     steps:
-      # Ensure Java 11
+      # Ensure Java 11 installed
       - script: |
           if ! java -version 2>&1 | grep '11.'; then
             echo "Java 11 not found. Installing..."
@@ -59,19 +62,21 @@ jobs:
           artifactName: 'releaseApk'
           downloadPath: '$(System.DefaultWorkingDirectory)/apk'
 
-      # Checkout Appium test repo into a fixed folder
+      # Clean checkout of Appium repo into fixed folder
       - checkout: appiumTests
+        clean: true
+        path: Qoutes_Daily_Appium
 
       # Run Appium tests
       - script: |
-          cd $(Build.SourcesDirectory)
+          cd $(Build.SourcesDirectory)/Qoutes_Daily_Appium
           ./gradlew clean test -PappPath=$(System.DefaultWorkingDirectory)/apk/app-release.apk
         displayName: "Run Appium Tests"
 
       # Publish HTML report as artifact
       - task: PublishBuildArtifacts@1
         inputs:
-          PathtoPublish: '$(Build.SourcesDirectory)/app/build/reports/tests/test'
+          PathtoPublish: '$(Build.SourcesDirectory)/Qoutes_Daily_Appium/app/build/reports/tests/test'
           ArtifactName: 'AppiumHTMLReport'
           publishLocation: 'Container'
 
@@ -83,15 +88,18 @@ jobs:
     pool:
       name: Default
     steps:
+      # Clean checkout of main repo
       - checkout: self
         clean: true
 
+      # Gradle build for AAB
       - task: Gradle@2
         inputs:
           gradleWrapperFile: 'gradlew'
           gradleOptions: '-Xmx3072m'
           tasks: 'bundleRelease'
 
+      # Publish AAB artifact
       - task: PublishBuildArtifacts@1
         inputs:
           PathtoPublish: 'app/build/outputs/bundle/release/app-release.aab'
@@ -106,6 +114,7 @@ jobs:
     pool:
       name: Default
     steps:
+      # Download AAB artifact
       - task: DownloadBuildArtifacts@0
         inputs:
           buildType: 'current'
@@ -113,6 +122,7 @@ jobs:
           artifactName: 'releaseBundle'
           downloadPath: '$(System.DefaultWorkingDirectory)'
 
+      # Upload to Google Play
       - task: GooglePlayRelease@4
         inputs:
           serviceConnection: 'Quotes Daily Service connection'
