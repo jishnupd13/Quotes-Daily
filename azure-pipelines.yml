@@ -6,7 +6,7 @@ resources:
   repositories:
     - repository: appiumTests
       type: git
-      name: Quotes_Daily_Appium
+      name: Quotes Daily/Quotes_Daily_Appium
 steps:
   - task: Gradle@2
     inputs:
