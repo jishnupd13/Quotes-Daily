@@ -1,37 +1,81 @@
 trigger:
-  branches:
-    include:
-      - development
+  - development   # Pipeline runs only when development branch updates
 
 pool:
-  name: Default   # Self-hosted agent on Mac
+  name: Default   # Self-hosted macOS agent
+
+resources:
+  repositories:
+    - repository: appiumTests
+      type: git
+      name: "Quotes Daily/Qoutes_Daily_Appium"
 
 jobs:
-  # Job 1: Build Debug APK
-  - job: DebugBuild
-    displayName: "Build Debug APK"
+  # Job 1: Build Release (APK + AAB) and publish as artifacts
+  - job: BuildRelease
+    displayName: "Build Release APK & AAB"
     steps:
-      - task: Gradle@2
-        inputs:
-          gradleWrapperFile: 'gradlew'
-          gradleOptions: '-Xmx3072m'
-          tasks: 'assembleDebug'
+      - checkout: self
 
-  # Job 2: Build Release & Upload to Play Store
-  - job: ReleaseBuild
-    displayName: "Build Release & Upload"
-    dependsOn: DebugBuild
-    steps:
       - task: Gradle@2
         inputs:
           gradleWrapperFile: 'gradlew'
           gradleOptions: '-Xmx3072m'
-          tasks: 'bundleRelease'
+          tasks: 'assembleRelease bundleRelease'
+
+      # Publish APK and AAB as pipeline artifacts
+      - publish: app/build/outputs
+        artifact: drop
+
+  # Job 2: Run Appium Tests using Release APK
+  - job: RunAppiumTests
+    displayName: "Run Appium Tests on Release APK"
+    dependsOn: BuildRelease
+    steps:
+      - checkout: appiumTests   # fetch Appium test repo
+
+      # Download the Release build artifact
+      - download: current
+        artifact: drop
+
+      # Install Java (required for Android + Appium tests)
+      - task: JavaToolInstaller@0
+        inputs:
+          versionSpec: '11'
+          jdkArchitectureOption: 'x64'
+          jdkSourceOption: 'PreInstalled'
+
+      # Install Appium & doctor check
+      - script: |
+          npm install -g appium
+          npm install -g appium-doctor
+          appium-doctor --android
+        displayName: "Install Appium & Doctor Check"
+
+      # Start Appium server in background
+      - script: |
+          nohup appium > appium.log 2>&1 &
+        displayName: "Start Appium Server"
+
+      # Run Appium tests with Release APK (picked from artifacts)
+      - script: |
+          ./gradlew clean test \
+            -PapkPath=$(Pipeline.Workspace)/drop/app/release/app-release.apk
+        workingDirectory: $(Build.SourcesDirectory)
+        displayName: "Run Appium Tests"
+
+  # Job 3: Upload AAB to Google Play (only if tests pass)
+  - job: ReleaseToPlay
+    displayName: "Upload to Google Play"
+    dependsOn: RunAppiumTests
+    steps:
+      - download: current
+        artifact: drop
 
       - task: GooglePlayRelease@4
         inputs:
           serviceConnection: 'Quotes Daily Service connection'
           applicationId: 'com.app.quotes_daily'
-          bundleFile: '$(System.DefaultWorkingDirectory)/app/build/outputs/bundle/release/app-release.aab'
+          bundleFile: '$(Pipeline.Workspace)/drop/app/release/app-release.aab'
           track: 'alpha'
           trackName: 'Closed testing - Closed Test Gamma'
