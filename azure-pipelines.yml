@@ -1,19 +1,20 @@
-trigger:
-  - development   # manual run only, so we can test safely
+trigger: none
 
 pool:
-  name: Default   # Your self-hosted Mac agent
+  name: Development
 
-
+resources:
+  repositories:
+    - repository: appiumTests
+      type: git
+      name: "Quotes Daily/Quotes_Daily_Appium"
 
 steps:
-  # Checkout main repo (self)
   - checkout: self
-    displayName: "Checkout Android repo"
-
-
-  # Show folder structure to verify both repos are present
+  - checkout: appiumTests
   - script: |
-      echo "=== Repo Folders ==="
+      echo "=== Android Repo (self) ==="
       ls -R $(Build.SourcesDirectory)
-    displayName: "List files after checkout"
+
+      echo "=== Appium Repo ==="
+      ls -R $(Build.SourcesDirectory)/appiumTests
