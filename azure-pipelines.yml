@@ -1,14 +1,10 @@
-trigger: development
+trigger:
+  - development
 
 pool:
   name: Default
 
-
 steps:
   - checkout: self
-  - script: |
-      echo "=== Android Repo (self) ==="
-      ls -R $(Build.SourcesDirectory)
 
-      echo "=== Appium Repo ==="
-      ls -R $(Build.SourcesDirectory)/appiumTests
+  - script: dir $(Build.SourcesDirectory)
