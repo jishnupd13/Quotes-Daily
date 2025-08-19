@@ -8,7 +8,7 @@ resources:
   repositories:
     - repository: appiumTests
       type: git
-      name: Quotes Daily Appium   # Name of your Appium repo
+      name: Quotes_Daily_Appium   # must not contain spaces
 
 steps:
   # 1️⃣ Build Release AAB
@@ -31,19 +31,18 @@ steps:
   # 4️⃣ Install Node.js dependencies for Appium tests
   - script: |
       npm install
-    workingDirectory: '$(Build.SourcesDirectory)/Quotes Daily Appium'
+    workingDirectory: '$(Build.SourcesDirectory)/appiumTests'
     displayName: 'Install Node.js dependencies for Appium'
 
   # 5️⃣ Start Appium server
   - script: |
-      appium &   # Start Appium in background
-      sleep 5
+      appium &  sleep 5
     displayName: 'Start Appium server'
 
   # 6️⃣ Run Appium tests
   - script: |
       npm test
-    workingDirectory: '$(Build.SourcesDirectory)/Quotes Daily Appium'
+    workingDirectory: '$(Build.SourcesDirectory)/appiumTests'
     displayName: 'Run Appium tests'
 
   # 7️⃣ Upload AAB to Google Play only if tests pass
