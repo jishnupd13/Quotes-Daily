@@ -4,20 +4,13 @@ trigger:
 pool:
   name: Default   # Your self-hosted Mac agent
 
-resources:
-  repositories:
-    - repository: appiumTests
-      type: git
-      name: Quotes_Daily_Appium   # second repo alias
+
 
 steps:
   # Checkout main repo (self)
   - checkout: self
     displayName: "Checkout Android repo"
 
-  # Checkout Appium repo
-  - checkout: appiumTests
-    displayName: "Checkout Appium repo"
 
   # Show folder structure to verify both repos are present
   - script: |
