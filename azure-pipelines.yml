@@ -1,38 +1,19 @@
-trigger:
-  - development
-
 pool:
-  name: Default   # Your self-hosted pool on Mac
+  name: Default   # Your self-hosted Mac agent
 
-jobs:
-  # Job 1: Build Release and Upload to Play Store
-  - job: ReleaseBuild
-    displayName: "Build Release & Upload"
-    pool:
-      name: Default
-    steps:
-      - task: Gradle@2
-        inputs:
-          gradleWrapperFile: 'gradlew'
-          gradleOptions: '-Xmx3072m'
-          tasks: 'bundleRelease'
+steps:
+  # 1️⃣ Build Release Bundle
+  - task: Gradle@2
+    inputs:
+      gradleWrapperFile: 'gradlew'
+      gradleOptions: '-Xmx3072m'
+      tasks: 'bundleRelease'
 
-      - task: GooglePlayRelease@4
-        inputs:
-          serviceConnection: 'Quotes Daily Service connection'
-          applicationId: 'com.app.quotes_daily'
-          bundleFile: 'app/build/outputs/bundle/release/app-release.aab'
-          track: 'alpha'
-          trackName: 'Closed testing - Closed Test Gamma'
-
-  # Job 2: Build Debug APK
-  - job: DebugBuild
-    displayName: "Build Debug APK"
-    pool:
-      name: Default
-    steps:
-      - task: Gradle@2
-        inputs:
-          gradleWrapperFile: 'gradlew'
-          gradleOptions: '-Xmx3072m'
-          tasks: 'assembleDebug'
+  # 2️⃣ Upload to Google Play
+  - task: GooglePlayRelease@4
+    inputs:
+      serviceConnection: 'Quotes Daily Service connection'
+      applicationId: 'com.app.quotes_daily'
+      bundleFile: 'app/build/outputs/bundle/release/app-release.aab'
+      track: 'alpha'
+      trackName: 'Closed testing - Closed Test Gamma'
