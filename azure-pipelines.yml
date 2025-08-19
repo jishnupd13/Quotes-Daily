@@ -8,7 +8,7 @@ resources:
   repositories:
     - repository: another_repo
       type: git
-      name: "Quotes Daily/Qoutes Daily Appium"
+      name: "Quotes Daily/Qoutes_Daily_Appium"
 
 steps:
   - checkout: self
