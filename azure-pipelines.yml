@@ -114,3 +114,4 @@ jobs:
           bundleFile: '$(System.DefaultWorkingDirectory)/releaseBundle/app-release.aab'
           track: 'alpha'
           trackName: 'Closed testing - Closed Test Gamma'
+
