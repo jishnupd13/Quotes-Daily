@@ -1,39 +1,50 @@
 trigger:
   - development
+
 pool:
-  name: Default
-resources:
-  repositories:
-    - repository: appiumTests
-      type: git
-      name: Quotes Daily/Quotes_Daily_Appium
+  name: Default   # Your self-hosted Mac agent
+
 steps:
+  # 1️⃣ Build Release AAB
   - task: Gradle@2
     inputs:
-      gradleWrapperFile: gradlew
-      gradleOptions: -Xmx3072m
-      tasks: bundleRelease
+      gradleWrapperFile: 'gradlew'
+      gradleOptions: '-Xmx3072m'
+      tasks: 'bundleRelease'   # generates .aab
+
+  # 2️⃣ Publish AAB as artifact
   - task: PublishBuildArtifacts@1
     inputs:
-      PathtoPublish: app/build/outputs/bundle/release/app-release.aab
-      ArtifactName: ReleaseAAB
-      publishLocation: Container
+      PathtoPublish: 'app/build/outputs/bundle/release/app-release.aab'
+      ArtifactName: 'ReleaseAAB'
+      publishLocation: 'Container'
+
+  # 3️⃣ Checkout Appium tests repo
   - checkout: appiumTests
+
+  # 4️⃣ Install Node.js dependencies for Appium tests
   - script: |
       npm install
-    workingDirectory: $(Build.SourcesDirectory)/appiumTests
-    displayName: Install Node.js dependencies for Appium
+    workingDirectory: '$(Build.SourcesDirectory)/appiumTests'
+    displayName: 'Install Node.js dependencies for Appium'
+
+  # 5️⃣ Start Appium server
   - script: |
-      appium &  sleep 5
-    displayName: Start Appium server
+      appium &   # Start Appium in background
+      sleep 5
+    displayName: 'Start Appium server'
+
+  # 6️⃣ Run Appium tests
   - script: |
       npm test
-    workingDirectory: $(Build.SourcesDirectory)/appiumTests
-    displayName: Run Appium tests
+    workingDirectory: '$(Build.SourcesDirectory)/appiumTests'
+    displayName: 'Run Appium tests'
+
+  # 7️⃣ Upload AAB to Google Play only if tests pass
   - task: GooglePlayRelease@4
     inputs:
-      serviceConnection: Quotes Daily Service connection
-      applicationId: com.app.quotes_daily
-      bundleFile: app/build/outputs/bundle/release/app-release.aab
-      track: alpha
-      trackName: Closed testing - Closed Test Gamma
+      serviceConnection: 'Quotes Daily Service connection'
+      applicationId: 'com.app.quotes_daily'
+      bundleFile: 'app/build/outputs/bundle/release/app-release.aab'
+      track: 'alpha'
+      trackName: 'Closed testing - Closed Test Gamma'
