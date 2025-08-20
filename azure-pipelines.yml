@@ -47,10 +47,12 @@ jobs:
       # Checkout main repo
       - checkout: self
         clean: true
+        path: 'main'
 
       # Checkout Appium tests repository
       - checkout: appiumTests
         clean: true
+        path: 'appium'
 
       # Download the built APK artifact
       - task: DownloadBuildArtifacts@0
@@ -66,21 +68,58 @@ jobs:
           versionSpec: '18.x'
         displayName: 'Install Node.js'
 
+      # List directories to debug the checkout
+      - script: |
+          echo "Build.SourcesDirectory contents:"
+          ls -la $(Build.SourcesDirectory)
+          echo "Looking for Appium repository..."
+          find $(Build.SourcesDirectory) -name "package.json" -type f
+        displayName: 'Debug: List directories'
+
       # Install Appium and dependencies
       - script: |
-          npm install -g appium
-          npm install
+          # Check if package.json exists
+          if [ -f "package.json" ]; then
+            echo "Found package.json, installing dependencies..."
+            npm install -g appium
+            npm install
+          else
+            echo "package.json not found in current directory"
+            echo "Current directory: $(pwd)"
+            echo "Directory contents:"
+            ls -la
+            exit 1
+          fi
         displayName: 'Install Appium and dependencies'
-        workingDirectory: '$(Build.SourcesDirectory)/Qoutes_Daily_Appium'
+        workingDirectory: '$(Build.SourcesDirectory)/appium'
 
       # Run Appium tests
       - script: |
           # Set APK path for tests
           export APK_PATH="$(System.ArtifactsDirectory)/releaseApk/app-release.apk"
-          # Run the tests (adjust command based on your test framework)
-          npm test
+          echo "APK Path: $APK_PATH"
+          # Check if package.json has test script
+          if [ -f "package.json" ]; then
+            if npm run | grep -q "test"; then
+              echo "Running npm test..."
+              npm test
+            else
+              echo "No test script found in package.json"
+              echo "Available scripts:"
+              npm run
+              # Try alternative test commands
+              if [ -f "test.js" ]; then
+                node test.js
+              elif [ -d "test" ]; then
+                echo "Test directory found, but no npm test script"
+              fi
+            fi
+          else
+            echo "No package.json found, cannot run tests"
+            exit 1
+          fi
         displayName: 'Run Appium Tests'
-        workingDirectory: '$(Build.SourcesDirectory)/Qoutes_Daily_Appium'
+        workingDirectory: '$(Build.SourcesDirectory)/appium'
 
       # Publish test results (optional - adjust based on your test output format)
       - task: PublishTestResults@2
@@ -88,5 +127,5 @@ jobs:
         inputs:
           testResultsFormat: 'JUnit'
           testResultsFiles: '**/test-results.xml'
-          searchFolder: '$(Build.SourcesDirectory)/Qoutes_Daily_Appium'
+          searchFolder: '$(Build.SourcesDirectory)/appium'
         displayName: 'Publish Test Results'
