@@ -63,12 +63,107 @@ jobs:
           downloadPath: '$(System.ArtifactsDirectory)'
 
       # Setup Java for Appium tests
-      - task: JavaToolInstaller@0
-        inputs:
-          versionSpec: '11'
-          jdkArchitectureOption: 'x64'
-          jdkSourceOption: 'PreInstalled'
-        displayName: 'Setup Java 11'
+      - script: |
+          echo "Checking for Java installation..."
+          
+          # Check if Java is already available
+          if java -version 2>&1 | grep -q "version"; then
+            echo "Java is already installed:"
+            java -version
+            
+            # Set JAVA_HOME if not already set
+            if [ -z "$JAVA_HOME" ]; then
+              # Try to find Java home
+              if [ -d "/Library/Java/JavaVirtualMachines" ]; then
+                JAVA_HOME=$(ls -1 /Library/Java/JavaVirtualMachines/ | head -1)
+                JAVA_HOME="/Library/Java/JavaVirtualMachines/$JAVA_HOME/Contents/Home"
+              elif [ -d "/System/Library/Java/JavaVirtualMachines" ]; then
+                JAVA_HOME=$(ls -1 /System/Library/Java/JavaVirtualMachines/ | head -1)
+                JAVA_HOME="/System/Library/Java/JavaVirtualMachines/$JAVA_HOME/Contents/Home"
+              else
+                JAVA_HOME=$(which java | sed 's/\/bin\/java//')
+              fi
+              echo "Setting JAVA_HOME to: $JAVA_HOME"
+              echo "##vso[task.setvariable variable=JAVA_HOME]$JAVA_HOME"
+            fi
+          else
+            echo "Java not found, installing via Homebrew..."
+            
+            # Check if Homebrew is installed
+            if ! command -v brew &> /dev/null; then
+              echo "Installing Homebrew..."
+              /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+              # Add Homebrew to PATH for current session
+              export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+            fi
+            
+            # Install OpenJDK 11
+            echo "Installing OpenJDK 11..."
+            brew install openjdk@11
+            
+            # Set JAVA_HOME
+            export JAVA_HOME=$(brew --prefix openjdk@11)/libexec/openjdk.jdk/Contents/Home
+            echo "##vso[task.setvariable variable=JAVA_HOME]$JAVA_HOME"
+            echo "##vso[task.setvariable variable=PATH]$JAVA_HOME/bin:$PATH"
+            
+            echo "Java installation completed"
+            java -version
+          fi
+        displayName: 'Setup Java'
+
+      # Setup Android SDK (if not already installed on the agent)
+      - script: |
+          # Check if Android SDK is already available
+          if [ -z "$ANDROID_HOME" ]; then
+            echo "ANDROID_HOME not set, setting up Android SDK..."
+            # Set Android SDK path (adjust based on your agent setup)
+            export ANDROID_HOME=/usr/local/share/android-sdk
+            export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+            echo "##vso[task.setvariable variable=ANDROID_HOME]$ANDROID_HOME"
+            echo "##vso[task.setvariable variable=PATH]$PATH"
+          else
+            echo "Android SDK found at: $ANDROID_HOME"
+          fi
+          
+          # Verify Android SDK tools
+          which adb || echo "ADB not found in PATH"
+          which emulator || echo "Emulator not found in PATH"
+        displayName: 'Setup Android SDK'
+
+      # Create and start Android emulator
+      - script: |
+          echo "Setting up Android emulator..."
+          
+          # Accept licenses
+          yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
+          
+          # Install required SDK components
+          $ANDROID_HOME/tools/bin/sdkmanager "platform-tools" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
+          
+          # Create AVD (Android Virtual Device)
+          echo "Creating AVD..."
+          echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd \
+            -n "test_emulator" \
+            -k "system-images;android-30;google_apis;x86_64" \
+            --force
+          
+          # Start emulator in background
+          echo "Starting emulator..."
+          $ANDROID_HOME/emulator/emulator -avd test_emulator -no-window -no-audio -no-snapshot &
+          
+          # Wait for emulator to boot
+          echo "Waiting for emulator to boot..."
+          $ANDROID_HOME/platform-tools/adb wait-for-device
+          
+          # Wait for boot to complete
+          while [ "`$ANDROID_HOME/platform-tools/adb shell getprop sys.boot_completed | tr -d '\r' `" != "1" ]; do
+            echo "Still waiting for boot..."
+            sleep 5
+          done
+          
+          echo "Emulator is ready!"
+          $ANDROID_HOME/platform-tools/adb devices
+        displayName: 'Create and Start Android Emulator'
 
       # List directories to debug the checkout
       - script: |
@@ -106,11 +201,30 @@ jobs:
           fi
         displayName: 'Find Appium Test Directory'
 
+      # Install APK on emulator
+      - script: |
+          APK_PATH="$(System.ArtifactsDirectory)/releaseApk/app-release.apk"
+          echo "Installing APK on emulator: $APK_PATH"
+          
+          # Verify emulator is ready
+          $ANDROID_HOME/platform-tools/adb devices
+          
+          # Install the APK
+          $ANDROID_HOME/platform-tools/adb install -r "$APK_PATH"
+          
+          echo "APK installed successfully"
+        displayName: 'Install APK on Emulator'
+
       # Run Appium tests
       - script: |
-          # Set APK path for tests
+          # Set APK path and device info for tests
           export APK_PATH="$(System.ArtifactsDirectory)/releaseApk/app-release.apk"
+          export DEVICE_NAME="test_emulator"
+          export PLATFORM_VERSION="11.0"
+          export AUTOMATION_NAME="UiAutomator2"
+          
           echo "APK Path: $APK_PATH"
+          echo "Device Name: $DEVICE_NAME"
           echo "Working in directory: $(APPIUM_TEST_DIR)"
           cd "$(APPIUM_TEST_DIR)"
           
@@ -118,11 +232,19 @@ jobs:
           if [ -f "pom.xml" ]; then
             echo "Found Maven project (pom.xml)"
             echo "Running Maven tests..."
-            mvn clean test -Dapp.path="$APK_PATH"
+            mvn clean test \
+              -Dapp.path="$APK_PATH" \
+              -Ddevice.name="$DEVICE_NAME" \
+              -Dplatform.version="$PLATFORM_VERSION" \
+              -Dautomation.name="$AUTOMATION_NAME"
           elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
             echo "Found Gradle project"
             echo "Running Gradle tests..."
-            ./gradlew clean test -Dapp.path="$APK_PATH"
+            ./gradlew clean test \
+              -Dapp.path="$APK_PATH" \
+              -Ddevice.name="$DEVICE_NAME" \
+              -Dplatform.version="$PLATFORM_VERSION" \
+              -Dautomation.name="$AUTOMATION_NAME"
           else
             echo "No recognized Java build file found (pom.xml or build.gradle)"
             echo "Directory contents:"
@@ -130,6 +252,13 @@ jobs:
             exit 1
           fi
         displayName: 'Run Appium Tests'
+
+      # Cleanup emulator
+      - script: |
+          echo "Stopping emulator..."
+          $ANDROID_HOME/platform-tools/adb emu kill
+        displayName: 'Stop Emulator'
+        condition: always()
 
       # Publish test results (optional - adjust based on your test output format)
       - task: PublishTestResults@2
