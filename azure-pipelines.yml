@@ -1,39 +1,62 @@
 trigger:
-  branches:
-    include:
-      - development   # Trigger only on development branch
+  - development
 
 pool:
-  name: "Azure Pipelines"   # Self-hosted Mac agent
+  name: Default
 
-resources:
-  repositories:
-    - repository: appiumTests
-      type: git
-      name: "Quotes Daily/Qoutes_Daily_Appium"
+variables:
+  # Use the arm64-v8a ABI for Apple Silicon
+  androidApi: '34' # Use an API level that supports arm64-v8a
+  androidAbi: 'arm64-v8a'
+  emulatorName: 'my_arm_emulator'
 
-jobs:
-  # Job 1: Build Release APK and publish artifact
-  - job: BuildReleaseAPK
-    displayName: "Build Release APK"
-    pool:
-      name: Default
-    steps:
-      # Clean checkout of main repo
-      - checkout: self
-        clean: true
+steps:
+  - task: UseAndroidTools@1
+    inputs:
+      # This task installs the Android SDK, which includes all the necessary
+      # command-line tools for managing emulators on macOS.
+      androidHome: '$(ANDROID_HOME)'
 
-      # Gradle build for APK
-      - task: Gradle@2
-        inputs:
-          gradleWrapperFile: 'gradlew'
-          gradleOptions: '-Xmx3072m'
-          tasks: 'assembleRelease'
+  - script: |
+      # The SDK manager is now in the cmdline-tools directory
+      chmod +x $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager
+      
+      # Accept licenses
+      yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+      
+      # Install the system image for the emulator.
+      # The 'google_apis' part is important for emulators that need Google Play services.
+      $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-$(androidApi);google_apis;$(androidAbi)"
+    displayName: 'Install Android System Image'
 
-      # Publish APK artifact
-      - task: PublishBuildArtifacts@1
-        inputs:
-          PathtoPublish: 'app/build/outputs/apk/release/app-release.apk'
-          ArtifactName: 'releaseApk'
-          publishLocation: 'Container'
+  - script: |
+      # Create the AVD (Android Virtual Device).
+      # The 'arm64-v8a' ABI ensures it is compatible with Apple Silicon's architecture.
+      echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --name "$(emulatorName)" --package "system-images;android-$(androidApi);google_apis;$(androidAbi)"
+    displayName: 'Create Android Emulator for Apple Silicon'
 
+  - script: |
+      # Start the emulator in the background.
+      # -no-window is crucial for running in a headless CI environment.
+      $ANDROID_HOME/emulator/emulator -avd "$(emulatorName)" -noaudio -no-window -gpu off &
+      
+      # Wait for the emulator to boot up.
+      # This step is critical to ensure the device is ready before running tests.
+      $ANDROID_HOME/platform-tools/adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done;'
+    displayName: 'Start Emulator and Wait for Boot'
+
+  - script: |
+      # List devices to verify the emulator is running
+      $ANDROID_HOME/platform-tools/adb devices
+      
+      # Run a simple adb command to interact with the emulator
+      $ANDROID_HOME/platform-tools/adb shell getprop
+    displayName: 'Verify Emulator is Running'
+
+# Add your build and test steps here. For example, to run an Espresso test:
+# - task: Gradle@2
+#   inputs:
+#     wrapperScript: 'gradlew'
+#     tasks: 'connectedAndroidTest'
+#     publishJUnitResults: true
+#   displayName: 'Run UI Tests on Emulator'
