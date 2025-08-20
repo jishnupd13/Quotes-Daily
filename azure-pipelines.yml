@@ -62,70 +62,82 @@ jobs:
           artifactName: 'releaseApk'
           downloadPath: '$(System.ArtifactsDirectory)'
 
-      # Install dependencies (assuming Node.js/npm for Appium)
-      - task: NodeTool@0
+      # Setup Java for Appium tests
+      - task: JavaToolInstaller@0
         inputs:
-          versionSpec: '18.x'
-        displayName: 'Install Node.js'
+          versionSpec: '11'
+          jdkArchitectureOption: 'x64'
+          jdkSourceOption: 'PreInstalled'
+        displayName: 'Setup Java 11'
 
       # List directories to debug the checkout
       - script: |
           echo "Build.SourcesDirectory contents:"
           ls -la $(Build.SourcesDirectory)
-          echo "Looking for Appium repository..."
-          find $(Build.SourcesDirectory) -name "package.json" -type f
-        displayName: 'Debug: List directories'
+          echo "Looking for Java/Maven project files..."
+          find $(Build.SourcesDirectory) -name "pom.xml" -type f
+          find $(Build.SourcesDirectory) -name "build.gradle*" -type f
+          echo "All directories in Build.SourcesDirectory:"
+          find $(Build.SourcesDirectory) -type d -maxdepth 2
+        displayName: 'Debug: List directories and find project files'
 
-      # Install Appium and dependencies
+      # Find and prepare Appium test directory
       - script: |
-          # Check if package.json exists
-          if [ -f "package.json" ]; then
-            echo "Found package.json, installing dependencies..."
-            npm install -g appium
-            npm install
+          echo "Looking for Appium test directory..."
+          # Check common directory names for the Appium repository
+          APPIUM_DIR=""
+          if [ -d "$(Build.SourcesDirectory)/appium" ]; then
+            APPIUM_DIR="$(Build.SourcesDirectory)/appium"
+          elif [ -d "$(Build.SourcesDirectory)/Qoutes_Daily_Appium" ]; then
+            APPIUM_DIR="$(Build.SourcesDirectory)/Qoutes_Daily_Appium"
           else
-            echo "package.json not found in current directory"
-            echo "Current directory: $(pwd)"
+            # Find any directory that contains pom.xml or build.gradle
+            APPIUM_DIR=$(find $(Build.SourcesDirectory) -name "pom.xml" -o -name "build.gradle*" | head -1 | xargs dirname)
+          fi
+          
+          if [ -n "$APPIUM_DIR" ] && [ -d "$APPIUM_DIR" ]; then
+            echo "Found Appium directory: $APPIUM_DIR"
+            echo "##vso[task.setvariable variable=APPIUM_TEST_DIR]$APPIUM_DIR"
             echo "Directory contents:"
-            ls -la
+            ls -la "$APPIUM_DIR"
+          else
+            echo "Could not find Appium test directory"
             exit 1
           fi
-        displayName: 'Install Appium and dependencies'
-        workingDirectory: '$(Build.SourcesDirectory)/appium'
+        displayName: 'Find Appium Test Directory'
 
       # Run Appium tests
       - script: |
           # Set APK path for tests
           export APK_PATH="$(System.ArtifactsDirectory)/releaseApk/app-release.apk"
           echo "APK Path: $APK_PATH"
-          # Check if package.json has test script
-          if [ -f "package.json" ]; then
-            if npm run | grep -q "test"; then
-              echo "Running npm test..."
-              npm test
-            else
-              echo "No test script found in package.json"
-              echo "Available scripts:"
-              npm run
-              # Try alternative test commands
-              if [ -f "test.js" ]; then
-                node test.js
-              elif [ -d "test" ]; then
-                echo "Test directory found, but no npm test script"
-              fi
-            fi
+          echo "Working in directory: $(APPIUM_TEST_DIR)"
+          cd "$(APPIUM_TEST_DIR)"
+          
+          # Check for Maven or Gradle project
+          if [ -f "pom.xml" ]; then
+            echo "Found Maven project (pom.xml)"
+            echo "Running Maven tests..."
+            mvn clean test -Dapp.path="$APK_PATH"
+          elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+            echo "Found Gradle project"
+            echo "Running Gradle tests..."
+            ./gradlew clean test -Dapp.path="$APK_PATH"
           else
-            echo "No package.json found, cannot run tests"
+            echo "No recognized Java build file found (pom.xml or build.gradle)"
+            echo "Directory contents:"
+            ls -la
             exit 1
           fi
         displayName: 'Run Appium Tests'
-        workingDirectory: '$(Build.SourcesDirectory)/appium'
 
       # Publish test results (optional - adjust based on your test output format)
       - task: PublishTestResults@2
         condition: succeededOrFailed()
         inputs:
           testResultsFormat: 'JUnit'
-          testResultsFiles: '**/test-results.xml'
-          searchFolder: '$(Build.SourcesDirectory)/appium'
+          testResultsFiles: |
+            **/target/surefire-reports/TEST-*.xml
+            **/build/test-results/test/TEST-*.xml
+          searchFolder: '$(APPIUM_TEST_DIR)'
         displayName: 'Publish Test Results'
