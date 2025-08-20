@@ -137,14 +137,26 @@ jobs:
           # Accept licenses
           yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
           
+          # Detect architecture and install appropriate system images
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "arm64" ]; then
+            echo "Detected Apple Silicon (ARM64), using ARM64 system images"
+            SYSTEM_IMAGE="system-images;android-30;google_apis;arm64-v8a"
+          else
+            echo "Detected Intel (x86_64), using x86_64 system images"
+            SYSTEM_IMAGE="system-images;android-30;google_apis;x86_64"
+          fi
+          
+          echo "Installing system image: $SYSTEM_IMAGE"
+          
           # Install required SDK components
-          $ANDROID_HOME/tools/bin/sdkmanager "platform-tools" "platforms;android-30" "system-images;android-30;google_apis;x86_64"
+          $ANDROID_HOME/tools/bin/sdkmanager "platform-tools" "platforms;android-30" "$SYSTEM_IMAGE"
           
           # Create AVD (Android Virtual Device)
-          echo "Creating AVD..."
+          echo "Creating AVD with $SYSTEM_IMAGE..."
           echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd \
             -n "test_emulator" \
-            -k "system-images;android-30;google_apis;x86_64" \
+            -k "$SYSTEM_IMAGE" \
             --force
           
           # Start emulator in background
