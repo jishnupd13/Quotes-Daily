@@ -4,7 +4,7 @@ trigger:
       - development   # Trigger only on development branch
 
 pool:
-  name: Default   # Self-hosted Mac agent
+  name: "Azure Pipelines"   # Self-hosted Mac agent
 
 resources:
   repositories:
@@ -303,6 +303,8 @@ EOF
             exit 1
           fi
         displayName: 'Find Appium Test Directory'
+
+
 
       # Install APK on emulator
       - script: |
