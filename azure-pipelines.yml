@@ -1,62 +1,55 @@
 trigger:
-  - development
+  - development  # run pipeline on development branch
 
 pool:
-  name: Default
+  agent: Default
 
 variables:
-  # Use the arm64-v8a ABI for Apple Silicon
-  androidApi: '34' # Use an API level that supports arm64-v8a
-  androidAbi: 'arm64-v8a'
-  emulatorName: 'my_arm_emulator'
+  ANDROID_SDK_ROOT: $(HOME)/Library/Android/sdk
+  EMULATOR_NAME: "Pixel_3_API_33"
+  API_LEVEL: "33"
+  DEVICE: "pixel_3"
 
-steps:
-  - task: UseAndroidTools@1
-    inputs:
-      # This task installs the Android SDK, which includes all the necessary
-      # command-line tools for managing emulators on macOS.
-      androidHome: '$(ANDROID_HOME)'
+jobs:
+  - job: RunAndroidEmulator
+    displayName: "Create and Run Android Emulator"
+    steps:
+      # 1. Install SDK tools
+      - task: Bash@3
+        displayName: "Install Android SDK Tools"
+        inputs:
+          targetType: 'inline'
+          script: |
+            yes | sdkmanager --licenses
+            sdkmanager "platform-tools" "platforms;android-$(API_LEVEL)" "emulator" "system-images;android-$(API_LEVEL);google_apis;x86_64"
 
-  - script: |
-      # The SDK manager is now in the cmdline-tools directory
-      chmod +x $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager
-      
-      # Accept licenses
-      yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-      
-      # Install the system image for the emulator.
-      # The 'google_apis' part is important for emulators that need Google Play services.
-      $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "system-images;android-$(androidApi);google_apis;$(androidAbi)"
-    displayName: 'Install Android System Image'
+      # 2. Create emulator
+      - task: Bash@3
+        displayName: "Create Android Emulator"
+        inputs:
+          targetType: 'inline'
+          script: |
+            echo "no" | avdmanager create avd -n $(EMULATOR_NAME) -k "system-images;android-$(API_LEVEL);google_apis;x86_64" --device "$(DEVICE)"
 
-  - script: |
-      # Create the AVD (Android Virtual Device).
-      # The 'arm64-v8a' ABI ensures it is compatible with Apple Silicon's architecture.
-      echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --name "$(emulatorName)" --package "system-images;android-$(androidApi);google_apis;$(androidAbi)"
-    displayName: 'Create Android Emulator for Apple Silicon'
+      # 3. Start emulator in background
+      - task: Bash@3
+        displayName: "Start Android Emulator"
+        inputs:
+          targetType: 'inline'
+          script: |
+            nohup emulator -avd $(EMULATOR_NAME) -no-snapshot -no-window -gpu swiftshader_indirect &
 
-  - script: |
-      # Start the emulator in the background.
-      # -no-window is crucial for running in a headless CI environment.
-      $ANDROID_HOME/emulator/emulator -avd "$(emulatorName)" -noaudio -no-window -gpu off &
-      
-      # Wait for the emulator to boot up.
-      # This step is critical to ensure the device is ready before running tests.
-      $ANDROID_HOME/platform-tools/adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done;'
-    displayName: 'Start Emulator and Wait for Boot'
-
-  - script: |
-      # List devices to verify the emulator is running
-      $ANDROID_HOME/platform-tools/adb devices
-      
-      # Run a simple adb command to interact with the emulator
-      $ANDROID_HOME/platform-tools/adb shell getprop
-    displayName: 'Verify Emulator is Running'
-
-# Add your build and test steps here. For example, to run an Espresso test:
-# - task: Gradle@2
-#   inputs:
-#     wrapperScript: 'gradlew'
-#     tasks: 'connectedAndroidTest'
-#     publishJUnitResults: true
-#   displayName: 'Run UI Tests on Emulator'
+      # 4. Wait for emulator to boot
+      - task: Bash@3
+        displayName: "Wait for Emulator to Boot"
+        inputs:
+          targetType: 'inline'
+          script: |
+            echo "Waiting for emulator to start..."
+            adb wait-for-device
+            boot_completed=""
+            until [[ "$boot_completed" =~ "1" ]]; do
+              boot_completed=$(adb shell getprop sys.boot_completed 2>&1)
+              sleep 5
+            done
+            echo "Emulator is ready!"
