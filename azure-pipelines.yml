@@ -1,5 +1,6 @@
 trigger:
   - development  # run pipeline on development branch
+  -
 
 pool:
   agent: Default
