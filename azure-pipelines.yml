@@ -62,54 +62,33 @@ jobs:
           artifactName: 'releaseApk'
           downloadPath: '$(System.ArtifactsDirectory)'
 
-      # Setup Java for Appium tests
+      # Setup Java 8 for Android SDK compatibility
       - script: |
-          echo "Checking for Java installation..."
+          echo "Installing Java 8 for Android SDK compatibility..."
           
-          # Check if Java is already available
-          if java -version 2>&1 | grep -q "version"; then
-            echo "Java is already installed:"
-            java -version
-            
-            # Set JAVA_HOME if not already set
-            if [ -z "$JAVA_HOME" ]; then
-              # Try to find Java home
-              if [ -d "/Library/Java/JavaVirtualMachines" ]; then
-                JAVA_HOME=$(ls -1 /Library/Java/JavaVirtualMachines/ | head -1)
-                JAVA_HOME="/Library/Java/JavaVirtualMachines/$JAVA_HOME/Contents/Home"
-              elif [ -d "/System/Library/Java/JavaVirtualMachines" ]; then
-                JAVA_HOME=$(ls -1 /System/Library/Java/JavaVirtualMachines/ | head -1)
-                JAVA_HOME="/System/Library/Java/JavaVirtualMachines/$JAVA_HOME/Contents/Home"
-              else
-                JAVA_HOME=$(which java | sed 's/\/bin\/java//')
-              fi
-              echo "Setting JAVA_HOME to: $JAVA_HOME"
-              echo "##vso[task.setvariable variable=JAVA_HOME]$JAVA_HOME"
-            fi
-          else
-            echo "Java not found, installing via Homebrew..."
-            
-            # Check if Homebrew is installed
-            if ! command -v brew &> /dev/null; then
-              echo "Installing Homebrew..."
-              /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-              # Add Homebrew to PATH for current session
-              export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-            fi
-            
-            # Install OpenJDK 11
-            echo "Installing OpenJDK 11..."
-            brew install openjdk@11
-            
-            # Set JAVA_HOME
-            export JAVA_HOME=$(brew --prefix openjdk@11)/libexec/openjdk.jdk/Contents/Home
-            echo "##vso[task.setvariable variable=JAVA_HOME]$JAVA_HOME"
-            echo "##vso[task.setvariable variable=PATH]$JAVA_HOME/bin:$PATH"
-            
-            echo "Java installation completed"
-            java -version
+          # Check if Homebrew is installed
+          if ! command -v brew &> /dev/null; then
+            echo "Installing Homebrew..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            # Add Homebrew to PATH for current session
+            export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
           fi
-        displayName: 'Setup Java'
+          
+          # Always install Java 8 to ensure compatibility
+          echo "Installing/updating OpenJDK 8..."
+          brew install openjdk@8 || brew upgrade openjdk@8 || echo "Java 8 already installed"
+          
+          # Force set JAVA_HOME to Java 8
+          export JAVA_HOME=$(brew --prefix openjdk@8)/libexec/openjdk.jdk/Contents/Home
+          export PATH="$JAVA_HOME/bin:$PATH"
+          
+          echo "##vso[task.setvariable variable=JAVA_HOME]$JAVA_HOME"
+          echo "##vso[task.setvariable variable=PATH]$JAVA_HOME/bin:$PATH"
+          
+          echo "Java 8 setup completed"
+          echo "JAVA_HOME: $JAVA_HOME"
+          java -version
+        displayName: 'Force Java 8 Setup'
 
       # Setup Android SDK (if not already installed on the agent)
       - script: |
@@ -134,6 +113,23 @@ jobs:
       - script: |
           echo "Setting up Android emulator..."
           
+          # Force Java 8 environment for Android SDK tools
+          export JAVA_HOME=$(brew --prefix openjdk@8)/libexec/openjdk.jdk/Contents/Home
+          export PATH="$JAVA_HOME/bin:$PATH"
+          
+          echo "Using Java 8 for Android SDK:"
+          echo "JAVA_HOME: $JAVA_HOME"
+          java -version
+          
+          # Verify Java 8 is being used
+          if ! java -version 2>&1 | grep -q "1.8\|openjdk 8"; then
+            echo "ERROR: Java 8 not being used! Current version:"
+            java -version
+            echo "Attempting to force Java 8..."
+            export PATH="$(brew --prefix openjdk@8)/bin:$PATH"
+            java -version
+          fi
+          
           # Accept licenses
           yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
           
@@ -150,14 +146,101 @@ jobs:
           echo "Installing system image: $SYSTEM_IMAGE"
           
           # Install required SDK components
-          $ANDROID_HOME/tools/bin/sdkmanager "platform-tools" "platforms;android-30" "$SYSTEM_IMAGE"
+          if ! $ANDROID_HOME/tools/bin/sdkmanager "platform-tools" "platforms;android-30" "$SYSTEM_IMAGE"; then
+            echo "SDK Manager failed. Trying with command line tools..."
+            # Download command line tools if sdkmanager fails
+            cd $ANDROID_HOME
+            curl -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-mac-9477386_latest.zip
+            unzip -q cmdline-tools.zip
+            mkdir -p cmdline-tools/latest
+            mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
+            export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+            yes | sdkmanager --licenses
+            sdkmanager "platform-tools" "platforms;android-30" "$SYSTEM_IMAGE"
+          fi
           
           # Create AVD (Android Virtual Device)
           echo "Creating AVD with $SYSTEM_IMAGE..."
-          echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd \
-            -n "test_emulator" \
-            -k "$SYSTEM_IMAGE" \
-            --force
+          
+          # Method 1: Try with original avdmanager
+          if echo "no" | $ANDROID_HOME/tools/bin/avdmanager create avd -n "test_emulator" -k "$SYSTEM_IMAGE" --force; then
+            echo "AVD created successfully with tools/bin/avdmanager"
+          # Method 2: Try with command line tools
+          elif echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd -n "test_emulator" -k "$SYSTEM_IMAGE" --force; then
+            echo "AVD created successfully with cmdline-tools"
+          else
+            # Method 3: Manual AVD creation
+            echo "Both avdmanager methods failed. Creating AVD manually..."
+            
+            AVD_DIR="$HOME/.android/avd/test_emulator.avd"
+            AVD_INI="$HOME/.android/avd/test_emulator.ini"
+            
+            mkdir -p "$AVD_DIR"
+            mkdir -p "$HOME/.android/avd"
+            
+            # Create AVD config file
+            cat > "$AVD_INI" << EOF
+avd.ini.encoding=UTF-8
+path=$AVD_DIR
+path.rel=avd/test_emulator.avd
+target=android-30
+EOF
+
+            # Create AVD directory config
+            cat > "$AVD_DIR/config.ini" << EOF
+AvdId=test_emulator
+PlayStore.enabled=false
+abi.type=arm64-v8a
+avd.ini.displayname=test_emulator
+avd.ini.encoding=UTF-8
+disk.dataPartition.size=800MB
+hw.accelerometer=yes
+hw.arc=false
+hw.audioInput=yes
+hw.battery=yes
+hw.camera.back=webcam0
+hw.camera.front=webcam0
+hw.cpu.arch=arm64
+hw.cpu.ncore=4
+hw.dPad=no
+hw.device.hash2=MD5:6930e145748b87e87b14ffb4e762aeb3
+hw.device.manufacturer=Google
+hw.device.name=pixel
+hw.gps=yes
+hw.gpu.enabled=yes
+hw.gpu.mode=auto
+hw.initialOrientation=Portrait
+hw.keyboard=yes
+hw.lcd.density=420
+hw.lcd.height=1920
+hw.lcd.width=1080
+hw.mainKeys=no
+hw.ramSize=1536
+hw.sdCard=yes
+hw.sensors.orientation=yes
+hw.sensors.proximity=yes
+hw.trackBall=no
+image.sysdir.1=system-images/android-30/google_apis/arm64-v8a/
+tag.display=Google APIs
+tag.id=google_apis
+vm.heapSize=256
+EOF
+            
+            echo "Manual AVD creation completed"
+          fi
+          
+          # Verify AVD was created
+          echo "Checking available AVDs:"
+          $ANDROID_HOME/emulator/emulator -list-avds
+          
+          # Verify the specific AVD exists
+          if [ -f "$HOME/.android/avd/test_emulator.ini" ]; then
+            echo "✓ test_emulator AVD found"
+          else
+            echo "✗ test_emulator AVD not found!"
+            echo "Available AVD files:"
+            ls -la "$HOME/.android/avd/" || echo "No AVD directory found"
+          fi
           
           # Start emulator in background
           echo "Starting emulator..."
@@ -168,10 +251,18 @@ jobs:
           $ANDROID_HOME/platform-tools/adb wait-for-device
           
           # Wait for boot to complete
-          while [ "`$ANDROID_HOME/platform-tools/adb shell getprop sys.boot_completed | tr -d '\r' `" != "1" ]; do
-            echo "Still waiting for boot..."
-            sleep 5
+          BOOT_TIMEOUT=300  # 5 minutes
+          ELAPSED=0
+          while [ "`$ANDROID_HOME/platform-tools/adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r' `" != "1" ] && [ $ELAPSED -lt $BOOT_TIMEOUT ]; do
+            echo "Still waiting for boot... ($ELAPSED/$BOOT_TIMEOUT seconds)"
+            sleep 10
+            ELAPSED=$((ELAPSED + 10))
           done
+          
+          if [ $ELAPSED -ge $BOOT_TIMEOUT ]; then
+            echo "Emulator boot timeout reached!"
+            exit 1
+          fi
           
           echo "Emulator is ready!"
           $ANDROID_HOME/platform-tools/adb devices
