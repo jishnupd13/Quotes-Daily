@@ -36,3 +36,57 @@ jobs:
           PathtoPublish: 'app/build/outputs/apk/release/app-release.apk'
           ArtifactName: 'releaseApk'
           publishLocation: 'Container'
+
+  # Job 2: Run Appium Tests
+  - job: RunAppiumTests
+    displayName: "Run Appium Tests"
+    dependsOn: BuildReleaseAPK
+    pool:
+      name: Default
+    steps:
+      # Checkout main repo
+      - checkout: self
+        clean: true
+
+      # Checkout Appium tests repository
+      - checkout: appiumTests
+        clean: true
+
+      # Download the built APK artifact
+      - task: DownloadBuildArtifacts@0
+        inputs:
+          buildType: 'current'
+          downloadType: 'single'
+          artifactName: 'releaseApk'
+          downloadPath: '$(System.ArtifactsDirectory)'
+
+      # Install dependencies (assuming Node.js/npm for Appium)
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '18.x'
+        displayName: 'Install Node.js'
+
+      # Install Appium and dependencies
+      - script: |
+          npm install -g appium
+          npm install
+        displayName: 'Install Appium and dependencies'
+        workingDirectory: '$(Build.SourcesDirectory)/Qoutes_Daily_Appium'
+
+      # Run Appium tests
+      - script: |
+          # Set APK path for tests
+          export APK_PATH="$(System.ArtifactsDirectory)/releaseApk/app-release.apk"
+          # Run the tests (adjust command based on your test framework)
+          npm test
+        displayName: 'Run Appium Tests'
+        workingDirectory: '$(Build.SourcesDirectory)/Qoutes_Daily_Appium'
+
+      # Publish test results (optional - adjust based on your test output format)
+      - task: PublishTestResults@2
+        condition: succeededOrFailed()
+        inputs:
+          testResultsFormat: 'JUnit'
+          testResultsFiles: '**/test-results.xml'
+          searchFolder: '$(Build.SourcesDirectory)/Qoutes_Daily_Appium'
+        displayName: 'Publish Test Results'
